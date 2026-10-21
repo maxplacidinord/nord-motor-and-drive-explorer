@@ -8350,7 +8350,7 @@ const maJourney=[
   views:[[27,'Flux and saturation'],[6,'Flux and torque current'],[25,'Reluctance torque and MTPA']]},
  {title:'Motor performance and application',short:'Application',teaser:'Shaft power, V/f, starting, gearing and thermal duty.',
   bridge:'Convert electromagnetic torque into useful shaft power. Compare V/f operating envelopes and load acceleration, inspect PMSM voltage limits, then follow speed and torque through the gearbox. Current limits and heat determine how long the application can sustain that performance.',
-  views:[[10,'Torque and shaft power'],[4,'V/f, torque and power'],[21,'Starting and load torque'],[26,'PMSM operating limits'],[42,'PM motor overspeed'],[13,'Gearbox and output'],[36,'Current limits and thermal duty'],[43,'Where motors fail']]},
+  views:[[10,'Torque and shaft power'],[4,'V/f, torque and power'],[21,'Starting and load torque'],[26,'PMSM operating limits'],[42,'PM motor overspeed'],[13,'Gearbox and output'],[36,'Current limits and thermal duty'],[43,'Where motors fail'],[44,'Cables and connectors']]},
  {title:'Motor control and feedback',short:'Control',teaser:'Follow measurements back to the voltage commands.',
   bridge:'Now follow information back around the power circuit. In vector control, the controller uses current measurements and an estimated or measured angle to choose voltage commands. Start with the whole loop and compare it with simple V/f control, then examine the transforms, sampling, regulation and low-speed limitations.',
   views:[[14,'Control system and feedback'],[11,'Clarke and Park'],[34,'Current sensing and regulation'],[35,'Low-speed operation']]},
@@ -10456,6 +10456,407 @@ maRegister(43,{
 });
 if(Array.isArray(funnels[20])&&!funnels[20].includes(43))funnels[20].push(43);
 if(Array.isArray(lessonOrder)&&!lessonOrder.includes(43))lessonOrder.push(43);
+
+// BEGIN CABLES AND CONNECTORS
+const ccPinSets={
+ 'm12-8':{label:'M12 A-coded · 8-pin',sub:'incremental encoder IG0 · five signals used',shape:'circle',pins:[
+  {n:'1',f:'+24 V DC',c:'Brown',a:-90},
+  {n:'2',f:'B track',c:'White',a:-45},
+  {n:'3',f:'0 V / GND',c:'Blue',a:0},
+  {n:'4',f:'A track',c:'Black',a:45},
+  {n:'5',f:'Z / 0 track',c:'Grey',a:90},
+  {n:'6',f:'not used here',c:'—',a:135},
+  {n:'7',f:'not used here',c:'—',a:180},
+  {n:'8',f:'not used here',c:'—',a:225}
+ ]},
+ 'm12-4':{label:'M12 A-coded · 4-pin',sub:'incremental encoder IG · A / B only',shape:'circle',pins:[
+  {n:'1',f:'+24 V DC',c:'Brown',a:-90},
+  {n:'2',f:'B track',c:'White',a:0},
+  {n:'3',f:'0 V / GND',c:'Blue',a:90},
+  {n:'4',f:'A track',c:'Black',a:180}
+ ]},
+ 'm12-ag':{label:'M12 A-coded · 5-pin',sub:'absolute encoder AG · CANopen',shape:'circle',pins:[
+  {n:'1',f:'Shield / CAN_S',c:'White',a:-90},
+  {n:'2',f:'+24 V DC',c:'Brown',a:-18},
+  {n:'3',f:'0 V / GND',c:'Blue',a:54},
+  {n:'4',f:'SYS H · CAN_H',c:'Black',a:126},
+  {n:'5',f:'SYS L · CAN_L',c:'Grey',a:198}
+ ]},
+ 'han-q8':{label:'HAN Q8 · motor',sub:'3 phases + PE + brake + thermistor',shape:'rect',pins:[
+  {n:'1',f:'Motor phase U',c:'Black'},
+  {n:'7',f:'Motor phase V',c:'Black'},
+  {n:'3',f:'Motor phase W',c:'Black'},
+  {n:'PE',f:'Protective earth',c:'Green/yellow'},
+  {n:'6',f:'Brake MB+',c:'Black'},
+  {n:'4',f:'Brake MB−',c:'Black'},
+  {n:'8',f:'Thermistor TF+',c:'Black'},
+  {n:'5',f:'Thermistor TF−',c:'Black'}
+ ]},
+ 'han-q5':{label:'HAN Q5 · power in',sub:'three-phase mains input + PE',shape:'rect',pins:[
+  {n:'1',f:'Mains phase L1',c:'Black'},
+  {n:'3',f:'Mains phase L2',c:'Black'},
+  {n:'5',f:'Mains phase L3',c:'Black'},
+  {n:'PE',f:'Protective earth',c:'Green/yellow'}
+ ]}
+};
+const ccViewOptions=[['chain','Connection chain'],['motor','Motor cable'],['encoder','Encoder cable'],['pins','Connector pinout'],['select','Cable selection']];
+const ccAppOptions=[['mains','Mains input'],['motor','Motor'],['brake','Brake resistor'],['enc','Encoder'],['bus','Bus / Ethernet'],['daisy','Daisy-chain']];
+function ccFig(svg,caption){return mfFig(svg,caption);}
+function ccConn(x,y,label,color=L,w=58,h=28){e('rect',{x:x-w/2,y:y-h/2,width:w,height:h,rx:7,fill:'#142437',stroke:color,'stroke-width':1.5});tx(x,y+4,label,color,11,'','middle');}
+function ccTrack(x,y,w,h,period,duty,offset,color,width=2.6){
+ let d='',prev=null;
+ for(let i=0;i<=720;i++){
+  const t=i/2,high=(((t+offset)%period)+period)%period<period*duty,yy=high?y:y+h,xx=x+t/360*w;
+  if(prev===null)d='M'+xx+' '+yy;
+  else if(high!==prev)d+=' L'+xx+' '+(prev?y:y+h)+' L'+xx+' '+yy;
+  else d+=' L'+xx+' '+yy;
+  prev=high;
+ }
+ path(d,color,width);
+}
+function ccChain(){
+ const hybrid=settings.ccRoute==='hybrid';
+ tx(40,38,'One drive, four kinds of connection',L,22);
+ tx(40,62,'The power, brake, thermistor and encoder circuits share a route but not a function.',M,13);
+ maPanel(35,92,245,470,'Drive end','terminals, brake output, encoder interface');
+ maPanel(820,92,245,470,'Motor end','terminal box, brake, thermistor, encoder');
+ tx(157,175,'Mains in',M,12,'','middle');tx(157,215,'U  V  W',C[0],15,'','middle');
+ tx(157,275,'Brake output',C[1],12,'','middle');tx(157,315,'MB+   MB−',C[1],14,'','middle');
+ tx(157,375,'Thermistor',G,12,'','middle');tx(157,415,'TF+   TF−',G,14,'','middle');
+ tx(157,475,'Encoder',C[2],12,'','middle');tx(157,515,'A B Z / serial',C[2],14,'','middle');
+ tx(942,175,'Terminal box',M,12,'','middle');tx(942,215,'U  V  W  PE',C[0],15,'','middle');
+ tx(942,275,'Brake coil',C[1],12,'','middle');tx(942,315,'MB+   MB−',C[1],14,'','middle');
+ tx(942,375,'PTC / KTY',G,12,'','middle');tx(942,415,'TF+   TF−',G,14,'','middle');
+ tx(942,475,'Encoder',C[2],12,'','middle');tx(942,515,'A B Z / serial',C[2],14,'','middle');
+ const lanes=[
+  {y:190,label:'Power · 3 phases + PE',cols:[C[0],C[1],C[2],G],names:['U','V','W','PE']},
+  {y:290,label:'Brake release · DC pair',cols:[C[1],C[1]],names:['MB+','MB−']},
+  {y:390,label:'Thermistor · sensor pair',cols:[G,G],names:['TF+','TF−']},
+  {y:490,label:'Encoder · A / B / Z or serial',cols:[C[2],C[2],C[2]],names:['A','B','Z']}
+ ];
+ if(hybrid)e('rect',{x:286,y:124,width:528,height:404,rx:22,fill:'#b7f568',opacity:.045,stroke:'#61794e','stroke-width':1.5,'stroke-dasharray':'7 6'});
+ if(hybrid)tx(550,118,'one hybrid jacket · one connector at each end',L,12,'','middle');
+ lanes.forEach((lane,i)=>{
+  tx(300,lane.y-28,lane.label,M,11);
+  lane.cols.forEach((c,j)=>{
+   const off=(j-(lane.cols.length-1)/2)*12;
+   line(352,lane.y+off,748,lane.y+off,c,3.2);
+  });
+  if(i===0||i===3){e('rect',{x:345,y:lane.y-18,width:412,height:42,rx:16,fill:'none',stroke:'#4a6076','stroke-width':1,'stroke-dasharray':'4 4'});}
+  if(!hybrid){ccConn(318,lane.y,i===0?'Q8':i===1?'Q2':i===2?'M12':'M12',i===0?C[0]:i===1?C[1]:i===2?G:C[2],52,24);ccConn(782,lane.y,i===0?'10E':i===1?'Q2':i===2?'M12':'M12',i===0?C[0]:i===1?C[1]:i===2?G:C[2],52,24);}
+ });
+ if(hybrid){ccConn(318,306,'HYBRID',L,64,32);ccConn(782,306,'HYBRID',L,64,32);}
+ // PE bus
+ line(70,535,1030,535,'#6d8b61',2.5,'','6 4');
+ tx(550,556,'PE is a protective conductor, not a spare signal wire.',G,12,'','middle');
+ // shield note
+ tx(550,714,'The shield is part of the connection: bond it to the connector shell or the drive PE bar, not to a loose drain wire.',M,12,'','middle');
+ if(hybrid)metrics([['Route','One hybrid cable'],['Power','3P + PE'],['Brake + TF','2 + 2 cores'],['Encoder','4/5 cores']]);
+ else metrics([['Route','Separate cables'],['Cable runs','4'],['Power','3P + PE'],['Encoder','4/5 cores']]);
+}
+function ccMotor(){
+ const cx=300,cy=345,R=188;
+ tx(40,38,'Inside the motor cable',L,22);
+ tx(40,62,'Power, brake and thermistor cores share one jacket; the shield surrounds all of them.',M,13);
+ maPanel(35,92,520,500,'Cable cross-section','schematic, not a scaled cable drawing');
+ circle(cx,cy,R,'#455d74','#1c2c3f',16);
+ circle(cx,cy,R-20,'#5f7a93','none',2);
+ circle(cx,cy,R-34,'#91a8ba','none',3);
+ const power=[['U',C[0],90],['V',C[1],210],['W',C[2],330],['PE',G,270]];
+ const sel=settings.ccCore||'U';
+ power.forEach(([n,c,a])=>{const x=cx+78*Math.cos(r(a)),y=cy-78*Math.sin(r(a));circle(x,y,30,c,c+'22',2);tx(x,y+6,n,'#0b1724',17,'','middle');if(sel===n||(sel==='PE'&&n==='PE'))circle(x,y,37,L,'none',2.5);});
+ [['MB+',60],['MB−',120]].forEach(([n,a])=>{const x=cx+138*Math.cos(r(a)),y=cy-138*Math.sin(r(a));circle(x,y,18,C[1],C[1]+'22',1.5);tx(x,y+4,n,'#0b1724',10,'','middle');if(sel==='brake')circle(x,y,24,L,'none',2.2);});
+ [['TF+',240],['TF−',300]].forEach(([n,a])=>{const x=cx+138*Math.cos(r(a)),y=cy-138*Math.sin(r(a));circle(x,y,18,G,G+'22',1.5);tx(x,y+4,n,'#0b1724',9,'','middle');if(sel==='tf')circle(x,y,24,L,'none',2.2);});
+ if(sel==='shield'){circle(cx,cy,R-34,L,'none',3.5);tx(cx,cy+150,'shield',L,12,'','middle');}
+ tx(cx,cy+4,'4 power cores',M,13,'','middle');tx(cx,cy+24,'+ brake + TF',M,12,'','middle');
+ // leader labels
+ const notes=[
+  ['U / V / W',C[0],cx+92,cy-120,470,145],
+  ['PE · green/yellow',G,cx+66,cy+150,455,235],
+  ['Brake pair · MB+/MB−',C[1],cx+150,cy-45,470,325],
+  ['TF+ / TF− pair',G,cx+150,cy+40,455,415],
+  ['Overall shield',L,cx-130,cy+120,455,530]
+ ];
+ notes.forEach(([t,c,x1,y1,x2,y2])=>{line(x1,y1,x2-12,y2-4,c,1.2,'','3 4');tx(x2,y2,t,c,12);});
+ maPanel(575,92,490,250,'Shield termination','the difference between a conductor and an antenna');
+ // pigtail
+ tx(600,175,'Pigtail',C[1],14);tx(600,195,'long drain wire',M,11);
+ line(600,225,760,225,'#7d92a8',10);line(760,225,760,245,C[1],3);line(760,245,800,265,C[1],3);line(800,265,820,265,C[1],3);
+ line(790,240,810,260,'#ff8a75',3);line(790,260,810,240,'#ff8a75',3);
+ tx(600,300,'High impedance at high frequency.',M,11);
+ // 360 gland
+ tx(850,175,'360° gland',G,14);tx(850,195,'shield clamped at shell',M,11);
+ line(850,225,1000,225,'#7d92a8',10);circle(930,225,16,G,'none',3);line(930,241,930,265,G,3);line(930,265,985,265,G,3);
+ tx(850,300,'Low impedance; the shield works.',G,11);
+ maPanel(575,365,490,225,'What the drawing does not size','current, voltage drop, bend radius, temperature and EMC');
+ tx(600,450,'Conductor area is selected from current,',M,12);
+ tx(600,472,'voltage drop, ambient, grouping and the',M,12);
+ tx(600,494,'drive output waveform. The colours and',M,12);
+ tx(600,516,'pin numbers are a wiring aid, not a',M,12);
+ tx(600,538,'substitute for the cable data sheet.',M,12);
+ const m={U:['Highlighted','U phase'],V:['Highlighted','V phase'],W:['Highlighted','W phase'],PE:['Highlighted','PE'],brake:['Highlighted','Brake pair'],tf:['Highlighted','Thermistor pair'],shield:['Highlighted','Overall shield']}[sel]||['Highlighted','U phase'];
+ metrics([[m[0],m[1]],['Power cores','3 + PE'],['Brake / TF','2 + 2'],['Shield','Overall + drain']]);
+}
+function ccEncoder(){
+ const incremental=settings.ccEncoder!=='absolute',showComp=!!settings.ccComplement,n=+settings.ccResolution||1024,turns=(settings.ccAbsTurns||'12')==='16'?16:12;
+ tx(40,38,incremental?'Incremental encoder: edges and a reference':'Absolute encoder: a position word, not a pulse train',L,22);
+ tx(40,62,incremental?'A and B give direction and resolution; Z marks one mechanical revolution.':'The encoder transmits a coded position; single-turn and multi-turn data answer different questions.',M,13);
+ maPanel(35,92,545,500,incremental?'A / B / Z over one revolution':'Absolute position word',incremental?'quadrature square waves, complementary tracks optional':'representative 13-bit single-turn + 12-bit multi-turn example');
+ if(incremental){
+  const x=70,w=470,h=42;
+  tx(48,175,'A',C[0],15);ccTrack(x,185,w,h,360,.5,0,C[0],3);
+  tx(48,265,'B',C[2],15);ccTrack(x,275,w,h,360,.5,90,C[2],3);
+  tx(48,355,'Z',G,15);ccTrack(x,365,w,h,360,.035,-2,G,3);
+  if(showComp){
+   ccTrack(x,415,w,14,360,.5,0,'#4f8fa8',1.6);ccTrack(x,435,w,14,360,.5,90,'#8d6fb0',1.6);ccTrack(x,455,w,14,360,.035,-2,'#5a9a69',1.6);
+   tx(548,480,'complementary',M,10,'','end');
+  }
+  [0,90,180,270,360].forEach(t=>{line(x+t/360*w,160,x+t/360*w,410,'#2b3f54',1,'','3 4');tx(x+t/360*w,530,t+'°',M,10,'','middle');});
+  tx(x+w/2,558,'one mechanical revolution',M,12,'','middle');
+  tx(70,585,'4 edges per A/B period  →  4N counts per revolution',L,13);
+ }else{
+  const tw=turns===16?22:28,tg=turns===16?26:34;
+  tx(70,175,'Single-turn word',C[0],14);tx(70,195,'angle inside one revolution',M,11);
+  for(let i=0;i<13;i++){e('rect',{x:70+i*34,y:215,width:28,height:32,rx:4,fill:i<9?'#28435a':'#1a2a3e',stroke:'#4a6379'});tx(84+i*34,236,String(12-i),M,10,'','middle');}
+  tx(70,275,'13 bits → 8192 positions per turn',C[0],12);
+  tx(70,325,'Multi-turn word',C[1],14);tx(70,345,'revolution count, retained while powered',M,11);
+  for(let i=0;i<turns;i++){e('rect',{x:70+i*tg,y:365,width:tw,height:32,rx:4,fill:'#4a3b2a',stroke:'#7d674c'});tx(70+i*tg+tw/2,386,String(turns-1-i),M,10,'','middle');}
+  tx(70,425,turns+' bits → '+f(Math.pow(2,turns),0)+' turns',C[1],12);
+  e('rect',{x:70,y:455,width:420,height:42,rx:9,fill:'#142437',stroke:L});tx(280,481,'position = turns × 8192 + angle',L,14,'','middle');
+  tx(70,530,'Serial or CANopen frame',C[2],13);
+  tx(70,555,'SSI / BiSS / EnDat / DS406',M,11);
+ }
+ maPanel(600,92,465,500,incremental?'Why the cable matters':'Single-turn vs multi-turn','twisted pairs, shield and a clean reference');
+ if(incremental){
+  tx(625,175,'Counts',M,12);tx(625,210,f(4*n,0),L,30,'numeric');tx(625,235,'counts / revolution',M,11);
+  tx(625,280,'Mechanical step',M,12);tx(625,310,f(360/(4*n),4)+'°',C[0],22,'numeric');tx(625,335,'per count',M,11);
+  tx(625,375,'Direction',M,12);tx(625,405,'A leads B, or B leads A',C[2],15);
+  tx(625,445,'Reference',M,12);tx(625,475,'Z / index once per turn',G,15);
+  tx(625,515,'Homing',M,12);tx(625,543,'needed after power-off',C[1],15);
+ }else{
+  tx(625,175,'Resolution',M,12);tx(625,210,'13 bit',L,30,'numeric');tx(625,235,'single-turn word',M,11);
+  tx(625,280,'Positions',M,12);tx(625,310,'8192',C[0],22,'numeric');tx(625,335,'per revolution',M,11);
+  tx(625,375,'Turns',M,12);tx(625,405,turns+' bit counter',C[2],15);
+  tx(625,445,'Homing',M,12);tx(625,475,'not needed inside range',G,15);
+  tx(625,515,'Cable',M,12);tx(625,543,'twisted data pair + shield',C[1],14);
+ }
+ metrics(incremental?[['Type','Incremental'],['Pulses / rev',f(n,0)],['Counts / rev',f(4*n,0)],['Index','Z once per turn']]:[['Type','Absolute'],['Single-turn','13 bit'],['Turns',turns+' bit'],['Homing','Not required']]);
+}
+function ccPins(){
+ const id=settings.ccPins||'m12-8',ps=ccPinSets[id]||ccPinSets['m12-8'];
+ tx(40,38,'Connector pinout: the shell is not the wiring',L,22);
+ tx(40,62,'The same family can carry different signals. Read the pin numbers, then verify continuity.',M,13);
+ maPanel(35,92,500,560,ps.label,ps.sub);
+ if(ps.shape==='circle'){
+  const cx=285,cy=345,R=150;
+  circle(cx,cy,R,'#4b6379','#142437',3);circle(cx,cy,R-18,'#263c51','none',1);
+  ps.pins.forEach(p=>{
+   const x=cx+92*Math.cos(r(p.a)),y=cy-92*Math.sin(r(p.a));
+   circle(x,y,25,'#0e1b2a','#6d879e',2);tx(x,y+5,p.n,L,14,'','middle');
+   tx(cx+(R-8)*Math.cos(r(p.a)),cy-(R-8)*Math.sin(r(p.a))+4,p.f.length>14?p.f.slice(0,13)+'…':p.f,M,9,'','middle');
+  });
+  tx(cx,cy,'keyway',M,10,'','middle');e('rect',{x:cx-7,y:cy-12,width:14,height:24,rx:3,fill:'#263c51',stroke:M});
+ }else{
+  const shell=id==='han-q5'?{x:95,y:250,w:380,h:170}:{x:150,y:160,w:300,h:410};
+  e('rect',{x:shell.x,y:shell.y,width:shell.w,height:shell.h,rx:18,fill:'#142437',stroke:'#6d879e','stroke-width':3});
+  e('rect',{x:shell.x+18,y:shell.y+18,width:shell.w-36,height:shell.h-36,rx:12,fill:'none',stroke:'#40576e','stroke-width':1.5});
+  if(id==='han-q5'){
+   ps.pins.forEach((p,i)=>{const x=shell.x+55+i*88,y=shell.y+85;circle(x,y,24,'#0e1b2a','#6d879e',2);tx(x,y+5,p.n,L,13,'','middle');tx(x,y+40,p.f.replace('Mains phase ',''),M,9,'','middle');});
+  }else{
+   ps.pins.forEach((p,i)=>{const x=shell.x+85+(i%2)*130,y=shell.y+65+Math.floor(i/2)*95;circle(x,y,25,'#0e1b2a','#6d879e',2);tx(x,y+5,p.n,L,13,'','middle');tx(x,y+39,p.f.length>15?p.f.slice(0,14)+'…':p.f,M,9,'','middle');});
+  }
+  tx(shell.x+shell.w/2,shell.y+shell.h+20,'mating face · representative layout',M,10,'','middle');
+ }
+ maPanel(560,92,505,560,'Pin map · function · wire', ps.shape==='circle'?'M12 A-coded example':'HAN insert example');
+ const rowH=48,start=195;
+ tx(580,170,'Pin',M,10);tx(640,170,'Function',M,10);tx(880,170,'Wire colour',M,10);
+ ps.pins.forEach((p,i)=>{
+  const y=start+i*rowH;
+  if(i%2===0)e('rect',{x:572,y:y-20,width:480,height:rowH,rx:5,fill:'#16283a',opacity:.65});
+  tx(590,y+6,p.n,L,13,'','middle');tx(640,y+6,p.f,'#d5e3ef',12);tx(880,y+6,p.c,M,11);
+ });
+ tx(575,620,'Colours and pin numbers are representative. Check the moulded marking, the cable label and the device manual.',M,10);
+ metrics([['Connector',ps.label.split('·')[0].trim()],['Poles',String(ps.pins.length)],['Signals',id==='han-q8'?'Power + brake + TF':id==='han-q5'?'Mains + PE':'Encoder'],['Shield','Shell / drain']]);
+}
+function ccSelect(){
+ const rows=[
+  ['mains','Mains input','HAN Q4/2 · Q5 · NQ16 · CEE','—','—'],
+  ['motor','Motor','HAN Q8 · HAN 10E · ST8 · M23','HAN Q8 · HAN 10E + brake + TF','—'],
+  ['brake','Brake resistor','HAN Q2 · open end','—','—'],
+  ['enc','Encoder IG','—','—','M12 A 4/5/8-pin · M23'],
+  ['enc','Encoder AG','—','—','M12 A/B · CANopen DS406'],
+  ['bus','Bus / Ethernet','—','—','M12 B/D · RJ45'],
+  ['daisy','Daisy-chain','HAN Q4/2 male + female','HAN Q4/2 male + female','M12 B']
+ ];
+ const sel=settings.ccApp||'motor';
+ tx(40,38,'The cable range is a matrix, not a single part number',L,22);
+ tx(40,62,'Choose the circuit, then the connector, then the variant: length, angle, material and approval.',M,13);
+ const cx=[250,500,750],cw=[220,220,300];
+ ['Power cable','Hybrid cable','Signal cable'].forEach((t,i)=>{e('rect',{x:cx[i],y:100,width:cw[i],height:42,rx:9,fill:'#1a2d42',stroke:'#4a6379'});tx(cx[i]+cw[i]/2,127,t,L,15,'','middle');});
+ rows.forEach((row,i)=>{
+  const y=160+i*68,on=row[0]===sel;
+  if(on)e('rect',{x:40,y:y-22,width:1035,height:60,rx:9,fill:'#b7f568',opacity:.07,stroke:'#6f8f58','stroke-width':1.5});
+  tx(55,y+5,row[1],on?L:'#d5e3ef',13,'',on?'600':'400');
+  for(let c=0;c<3;c++){
+   const text=row[c+2],x=cx[c];
+   if(text!=='—')tx(x+10,y+5,text,'#a9bbcf',11);
+   else tx(x+10,y+5,'—','#4c6076',11);
+  }
+ });
+ tx(40,640,'Examples from the NORD cable overview: SC P… power, SC H… hybrid, SC S… signal. Suffixes encode connector, length, approval and jacket variant.',M,10);
+ tx(40,662,'The matrix is a map of the range, not a stock list. Use the material number and the technical information sheet for the selected cable.',M,10);
+ metrics([['Cable families','3'],['Connector ends','10+'],['Shielded options','Yes'],['Variant keys','Length · angle · material']]);
+}
+function ccDraw(){
+ maFrame(740);
+ if(settings.ccView==='motor')ccMotor();
+ else if(settings.ccView==='encoder')ccEncoder();
+ else if(settings.ccView==='pins')ccPins();
+ else if(settings.ccView==='select')ccSelect();
+ else ccChain();
+}
+function ccControls(){
+ maSelect('ccView','Connection view',ccViewOptions);
+ const v=settings.ccView;
+ if(v==='chain'){maSelect('ccRoute','Cable route',[['separate','Separate cables'],['hybrid','One hybrid cable']]);}
+ else if(v==='motor'){maSelect('ccCore','Highlight conductor',[['U','U phase'],['V','V phase'],['W','W phase'],['PE','Protective earth'],['brake','Brake pair'],['tf','Thermistor pair'],['shield','Overall shield']]);}
+ else if(v==='encoder'){maSelect('ccEncoder','Encoder principle',[['incremental','Incremental A/B/Z'],['absolute','Absolute serial / CANopen']]);if(settings.ccEncoder==='incremental'){maSelect('ccResolution','Pulses per revolution',[['512','512'],['1024','1024'],['2048','2048'],['4096','4096']]);maToggle('ccComplement','Show complementary tracks');}else{maSelect('ccAbsTurns','Multi-turn counter',[['12','12-bit · 4096 turns'],['16','16-bit · 65,536 turns']]);}}
+ else if(v==='pins'){maSelect('ccPins','Connector',[['m12-8','M12 A · 8-pin · IG0'],['m12-4','M12 A · 4-pin · IG'],['m12-ag','M12 A · 5-pin · AG'],['han-q8','HAN Q8 · motor'],['han-q5','HAN Q5 · power in']]);}
+ else {maSelect('ccApp','Application',ccAppOptions);}
+}
+// Inline article figures, 720 px wide like the other reference cards.
+function ccInlineChain(){
+ let s='<svg viewBox="0 0 720 210" role="img" aria-label="Drive, four cable functions and motor">';
+ s+='<rect width="720" height="210" fill="#0b1724"/>';
+ s+=mfT(24,30,'Four circuits, one route','#e8f1f8',16,'start','600');
+ s+='<rect x="24" y="58" width="120" height="108" rx="9" fill="#122132" stroke="#5bd9ff"/>';
+ s+=mfT(84,84,'Drive','#e8f1f8',12,'middle','600');s+=mfT(84,104,'terminals','#9fb0c7',9,'middle');s+=mfT(84,122,'encoder port','#9fb0c7',9,'middle');
+ s+='<rect x="576" y="58" width="120" height="108" rx="9" fill="#122132" stroke="#ffc475"/>';
+ s+=mfT(636,84,'Motor','#e8f1f8',12,'middle','600');s+=mfT(636,104,'terminal box','#9fb0c7',9,'middle');s+=mfT(636,122,'brake / encoder','#9fb0c7',9,'middle');
+ [['3P + PE','#5bd9ff',74],['MB+ / MB−','#ffc475',98],['TF+ / TF−','#9aefb3',122],['A / B / Z','#c5a1ff',146]].forEach(([t,c,y])=>{s+=mfL(150,y,570,y,c,2.4);s+=mfT(360,y-7,t,c,9,'middle');});
+ s+=mfT(360,188,'separate cables: each circuit keeps its own connector and shield','#9fb0c7',9.5,'middle');
+ return s+'</svg>';
+}
+function ccInlineCore(){
+ let s='<svg viewBox="0 0 720 240" role="img" aria-label="Motor cable cross-section">';
+ s+='<rect width="720" height="240" fill="#0b1724"/>';
+ s+=mfT(24,30,'Power, brake and thermistor in one jacket','#e8f1f8',16,'start','600');
+ s+='<circle cx="150" cy="132" r="86" fill="none" stroke="#455d74" stroke-width="12"/>';
+ s+='<circle cx="150" cy="132" r="74" fill="none" stroke="#91a8ba" stroke-width="2" stroke-dasharray="4 4"/>';
+ [['U','#5bd9ff',-90],['V','#ffc475',30],['W','#c5a1ff',150],['PE','#9aefb3',270]].forEach(([t,c,a])=>{const x=150+38*Math.cos(a*Math.PI/180),y=132-38*Math.sin(a*Math.PI/180);s+='<circle cx="'+x+'" cy="'+y+'" r="17" fill="'+c+'" stroke="'+c+'"/>';s+=mfT(x,y+5,t,'#0b1724',11,'middle','700');});
+ [['MB+',60,'#ffc475'],['MB−',120,'#ffc475'],['TF+',240,'#9aefb3'],['TF−',300,'#9aefb3']].forEach(([t,a,c])=>{const x=150+64*Math.cos(a*Math.PI/180),y=132-64*Math.sin(a*Math.PI/180);s+='<circle cx="'+x+'" cy="'+y+'" r="11" fill="'+c+'" opacity=".9"/>';s+=mfT(x,y+4,t,'#0b1724',8,'middle','700');});
+ [['3 phases + PE',74],['brake release pair',98],['thermistor pair',122],['overall shield',146]].forEach(([t,y],i)=>{s+=mfL(260,y-4,300,y-4,['#5bd9ff','#ffc475','#9aefb3','#b7f568'][i],3);s+=mfT(312,y,t,'#d5e3ef',10);});
+ s+=mfT(260,196,'The shield is bonded at the connector shell or PE bar.','#9fb0c7',9.5);
+ s+=mfT(260,214,'A long drain wire is a high-impedance path at HF.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function ccInlineEncoder(){
+ let s='<svg viewBox="0 0 720 240" role="img" aria-label="Incremental and absolute encoder signals">';
+ s+='<rect width="720" height="240" fill="#0b1724"/>';
+ s+=mfT(24,30,'A/B/Z edges versus a position word','#e8f1f8',16,'start','600');
+ s+=mfT(24,58,'Incremental','#5bd9ff',11,'start','600');s+=mfT(390,58,'Absolute','#ffc475',11,'start','600');
+ function sq(x,y,w,period,duty,off,c){let d='',prev=null;for(let i=0;i<=360;i+=2){const t=i,hi=(((t+off)%period)+period)%period<period*duty,yy=hi?y:y+18,xx=x+t/360*w;if(prev===null)d='M'+xx+' '+yy;else if(hi!==prev)d+=' L'+xx+' '+(prev?y:y+18)+' L'+xx+' '+yy;else d+=' L'+xx+' '+yy;prev=hi;}s+='<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="2.4"/>';}
+ s+=mfT(24,92,'A','#5bd9ff',9);sq(56,82,290,360,.5,0,'#5bd9ff');
+ s+=mfT(24,124,'B','#c5a1ff',9);sq(56,114,290,360,.5,90,'#c5a1ff');
+ s+=mfT(24,156,'Z','#9aefb3',9);sq(56,146,290,360,.035,-2,'#9aefb3');
+ s+=mfT(200,190,'4N counts / rev · Z once per turn','#9fb0c7',9,'middle');
+ s+='<rect x="390" y="82" width="18" height="18" rx="3" fill="#28435a" stroke="#4a6379"/>';
+ s+=mfT(414,97,'13-bit angle', '#9fb0c7',9);
+ s+='<rect x="390" y="118" width="18" height="18" rx="3" fill="#4a3b2a" stroke="#7d674c"/>';
+ s+=mfT(414,133,'12-bit turns','#9fb0c7',9);
+ s+=mfT(390,174,'position = turns × 8192 + angle','#b7f568',10);
+ s+=mfT(390,198,'SSI · BiSS · EnDat · CANopen DS406','#9fb0c7',9);
+ return s+'</svg>';
+}
+function ccInlinePins(){
+ let s='<svg viewBox="0 0 720 275" role="img" aria-label="M12 and HAN Q8 pin faces">';
+ s+='<rect width="720" height="275" fill="#0b1724"/>';
+ s+=mfT(24,30,'Same shell, different pin map','#e8f1f8',16,'start','600');
+ s+='<circle cx="120" cy="135" r="66" fill="#142437" stroke="#6d879e" stroke-width="2"/>';
+ s+='<circle cx="120" cy="135" r="48" fill="none" stroke="#40576e" stroke-width="1"/>';
+ [['1',-90],['2',-45],['3',0],['4',45],['5',90],['6',135],['7',180],['8',225]].forEach(([t,a])=>{const x=120+30*Math.cos(a*Math.PI/180),y=135-30*Math.sin(a*Math.PI/180);s+='<circle cx="'+x+'" cy="'+y+'" r="9" fill="#0e1b2a" stroke="#6d879e"/>';s+=mfT(x,y+4,t,'#b7f568',8,'middle','600');});
+ s+=mfT(120,228,'M12 A · 8-pin','#9fb0c7',9,'middle');
+ s+='<rect x="250" y="70" width="150" height="170" rx="12" fill="#142437" stroke="#6d879e" stroke-width="2"/>';
+ [['1',285,100],['7',365,100],['3',285,145],['PE',365,145],['6',285,190],['4',365,190],['8',285,225],['5',365,225]].forEach(([t,x,y])=>{s+='<circle cx="'+x+'" cy="'+y+'" r="13" fill="#0e1b2a" stroke="#6d879e"/>';s+=mfT(x,y+4,t,'#b7f568',8,'middle','600');});
+ s+=mfT(325,258,'HAN Q8 · motor','#9fb0c7',9,'middle');
+ s+=mfT(450,92,'1 U   7 V   3 W   PE','#5bd9ff',10);
+ s+=mfT(450,118,'6 MB+   4 MB−','#ffc475',10);
+ s+=mfT(450,144,'8 TF+   5 TF−','#9aefb3',10);
+ s+=mfT(450,184,'Pin numbers are moulded,','#9fb0c7',9);
+ s+=mfT(450,202,'not implied by colour.','#9fb0c7',9);
+ return s+'</svg>';
+}
+function ccInlineMatrix(){
+ let s='<svg viewBox="0 0 720 230" role="img" aria-label="Cable selection matrix">';
+ s+='<rect width="720" height="230" fill="#0b1724"/>';
+ s+=mfT(24,30,'Choose the circuit before the part number','#e8f1f8',16,'start','600');
+ [['Power','#5bd9ff'],['Hybrid','#b7f568'],['Signal','#c5a1ff']].forEach(([t,c],i)=>{s+='<rect x="'+(210+i*165)+'" y="52" width="150" height="26" rx="6" fill="#1a2d42" stroke="#4a6379"/>';s+=mfT(285+i*165,70,t,c,10,'middle','600');});
+ [['Mains','Q4/2 · Q5','—','—'],['Motor','Q8 · 10E','Q8 + brake + TF','—'],['Encoder','—','—','M12 A/B'],['Bus','—','—','M12 B/D · RJ45']].forEach((r,ri)=>{const y=92+ri*30;s+=mfT(28,y+13,r[0],'#d5e3ef',10);for(let c=0;c<3;c++){s+=mfT(218+c*165,y+13,r[c+1],'#a9bbcf',9);}});
+ s+=mfT(24,214,'Variant keys: length, straight/angled, plastic/metal, 1 or 2 levers, UL/EU, halogen-free.','#9fb0c7',9);
+ return s+'</svg>';
+}
+maRegister(44,{
+ slug:'cables-connectors',
+ nav:'Cables & connectors',
+ title:'Cables, connectors and encoder wiring',
+ sub:'Follow power, brake, thermistor and encoder conductors from drive to motor, read the pinout, and choose the right cable variant.',
+ idea:'A drive installation is several electrical jobs sharing one route: three power phases with protective earth, a DC brake release pair, a thermistor circuit and an encoder feedback cable. The connector is not cosmetic. Its coding, pole count, contact size and shield termination decide which signals can pass and how robustly. NORD’s range reflects that with power, hybrid and signal cables, open ends or moulded connectors such as HAN Q4/2, Q5, Q8, HAN 10E, M12, M23, ST8 and NQ16. Read the circuit first, then the connector, then the variant.',
+ limit:'Teaching schematic and wiring overview, not a NORD selection or installation instruction. Pin assignments are representative examples taken from NORD wiring documents: HAN Q5 power input, HAN Q8 motor, M12 incremental and absolute encoder connections. Pin numbers, colours and terminal numbers can change with drive series, motor size, encoder type, cable length and variant. Always use the label on the device, the cable data sheet and the applicable manual. The drawings omit contact resistance, current derating, bend radius, chemical compatibility, fire performance, maximum cable length and local installation rules. The matrix is a map of the range, not a stock list.',
+ take:'Match the connector and cable to the signal: power, brake, thermistor and encoder are different circuits, even when they share one hybrid jacket.',
+ stage:'motor',parent:20,related:[19,14,20,31,16,7],
+ defaults:{ccView:'chain',ccRoute:'separate',ccCore:'U',ccEncoder:'incremental',ccResolution:'1024',ccComplement:true,ccAbsTurns:'12',ccPins:'m12-8',ccApp:'motor'},
+ controlsTitle:'Explore the connection',
+ controls(){ccControls();},
+ draw:ccDraw,
+ details:[
+  card('Reading the connection chain',
+   '<p>Start at the drive terminals and name each circuit separately. The mains input brings L1, L2 and L3 plus protective earth. The motor output carries U, V and W plus PE. A brake output or a brake rectifier supplies the release coil. A thermistor input reads a PTC or KTY sensor. An encoder interface reads shaft position or speed. These are not interchangeable conductors, even when they travel in the same cable bundle.</p>'+
+   ccFig(ccInlineChain(),'One route, four functions. The connector at each end must pass the right circuit, not merely fit.')+
+   '<p>The physical route has two common architectures. Separate cables give each circuit its own jacket, shield and connector; that is flexible but means four runs and four strain-relief points. A hybrid cable combines power, brake, thermistor and sometimes encoder conductors in one jacket. It reduces the number of runs and the chance of a crossed cable, but ties the cable to a particular motor size and pinout.</p>'+
+   '<p>NORD’s cable overview uses three families: power cables, hybrid cables and signal cables. Power examples include HAN Q4/2 and Q5 mains leads and HAN Q8 motor leads. Hybrid examples combine motor power with brake and thermistor cores, often with a HAN Q8 on the drive end and a HAN 10E or open end at the motor. Signal examples cover M12 encoder leads, M12-to-RJ45 Ethernet leads, CANopen and parameter cables.</p>'+
+   '<p>Before power-up, trace each circuit from end to end. Confirm pin-to-pin continuity, no cross-short between power and signal, PE to the motor frame, brake-coil resistance, thermistor resistance, and shield-to-shell continuity. The meter check is fast; a wrong pinout can destroy an encoder or energise a brake at the wrong time.</p>'),
+  card('Motor cable: three phases, PE and the extras',
+   '<p>The power cores are U, V and W. PE is a protective conductor, not a neutral and not a spare core. The winding connection itself is made at the motor terminal board: star or delta links decide what each winding sees, while the cable simply delivers the three line conductors. A cable change does not change the winding connection.</p>'+
+   ccFig(ccInlineCore(),'A motor cable can contain four power cores, a brake pair, a thermistor pair and an overall shield. The drawing is schematic; conductor areas and lay-up are selected for the drive and the installation.')+
+   '<p>The brake pair, MB+ and MB−, supplies a DC release coil. It is not a motor phase and it is not a signal-level input. The coil is inductive, so keep the pair twisted, keep it away from the encoder pair, and follow the drive or brake-rectifier instructions for suppression. Switching the brake while the motor is turning is a mechanical and electrical duty, not just a logic command.</p>'+
+   '<p>The thermistor pair, TF+ and TF−, reads a PTC or KTY sensor embedded in the winding. It is a sensor circuit: do not apply 24 V unless the drive input is designed for that sensor type. Polarity and the input configuration matter. A PTC is a low resistance when cold and rises sharply at its trip temperature; a KTY has a different, approximately linear curve. The drive must be set for the sensor actually fitted.</p>'+
+   '<p>NORD’s hybrid motor cables are keyed to motor frame size and connector geometry. The overview lists variants for IE1–IE4 sizes 63–112, IE5+ size 71, IE1–IE3 sizes 100, 112 and 132, with HAN Q8, HAN 10E, ST8 or open ends. A cable that fits one motor may not fit another because the terminal box, brake and encoder positions differ. Check the motor datasheet and the cable drawing, not just the connector name.</p>'+
+   '<p>Conductor size is not chosen from the connector. It depends on motor current, voltage drop, ambient temperature, grouping, duty cycle and the drive output waveform. Long motor cables also add capacitance and can produce reflected-wave overvoltage at the motor terminals; the drive manual may require a reactor, filter or a shorter cable. The cross-section drawing is a map of functions, not a sizing table.</p>'),
+  card('Encoder cables: incremental and absolute',
+   '<p>An incremental encoder reports movement, not an absolute position. It produces two quadrature tracks, A and B, plus a once-per-revolution index Z. The phase relationship gives direction; the number of pulses gives resolution. Four-edge decoding counts both edges of both tracks, so an encoder with N pulses per revolution gives 4N counts per revolution. After power-off, the counter loses its reference and a homing move is needed.</p>'+
+   ccFig(ccInlineEncoder(),'Incremental A/B/Z on the left; an absolute position word on the right. The absolute encoder does not need a pulse counter to know where it is.')+
+   '<p>Absolute encoders transmit a coded position over a serial link. Single-turn resolution gives the angle within one revolution; multi-turn adds a revolution counter. NORD’s absolute-encoder overview lists CANopen DS406 units with 13-bit single-turn resolution and 12-bit or 16-bit multi-turn resolution, in both singleturn and multiturn versions. Some variants also provide incremental signals. The interface, node ID and baud rate must match the drive.</p>'+
+   '<p>The electrical layer matters as much as the protocol. TTL encoders use differential 5 V signals and are relatively sensitive to noise and cable length. HTL encoders use a higher-voltage push-pull or open-collector output and are more robust, but still need a shield and a clean reference. Complementary signals, A/Ā, B/B̄ and Z/Z̄, improve noise immunity and allow the receiver to detect a broken pair. A TTL encoder without complementary tracks needs the unused inputs terminated as the drive manual requires.</p>'+
+   '<p>NORD’s M12 examples show the pattern. The incremental IG connection uses +24 V on pin 1, B on pin 2, 0 V on pin 3 and A on pin 4; the five-pin IG0 version adds Z on pin 5. The absolute AG connection uses +24 V on pin 2, 0 V on pin 3, SYS H on pin 4 and SYS L on pin 5, with the shield on pin 1. These are representative; the drive series and encoder variant can change the map.</p>'+
+   '<p>Commissioning checks are specific: supply voltage, A/B phase for direction, Z once per revolution, complementary levels, absolute node ID and baud rate, and CANopen termination. Use a scope or an encoder tester rather than guessing from the drive display. Do not hot-plug an encoder connector while the drive is powered.</p>'),
+  card('Connector families and pinouts',
+   '<p>M12 is the compact circular family. A-coded is used for signals and small power feeds, B-coded for fieldbus such as CANopen, and D-coded for Ethernet. The same shell is available in 4, 5 and 8 poles, male or female, straight or angled, metal or plastic. NORD uses M12 A-coded 8-pin leads for incremental encoders and M12 A/B/D-coded leads for signal and network connections.</p>'+
+   ccFig(ccInlinePins(),'Two faces, two different maps. The M12 shell is compact and keyed; the HAN Q8 insert carries power, brake and thermistor in one rectangular housing.')+
+   '<p>HAN is the rectangular industrial family. Q4/2 is common for mains and daisy-chain power, Q5 for a three-phase power input, Q8 for motor power with brake and thermistor, and Q2 for a brake resistor. HAN 10E adds more contacts and is used on motor cables for larger frame sizes; the NORD range includes one-lever and two-lever versions. M23 and ST8 appear on specific motor or decentralized-drive variants, and NQ16 on NORDAC ON/ON+ mains leads.</p>'+
+   '<p>A representative HAN Q8 motor map is: pin 1 U, pin 7 V, pin 3 W, PE protective earth, pin 6 MB+, pin 4 MB−, pin 8 TF+, pin 5 TF−. A HAN Q5 power input uses pin 1 L1, pin 3 L2, pin 5 L3 and PE. The numbers are not sequential because the insert is laid out for creepage and contact size; do not infer a function from the pin position.</p>'+
+   '<p>Two warnings follow. First, the same connector family can be wired differently for different drive series or cable variants. The NORD wiring sheet itself says to check whether the colours match. Second, colour is not a pin number: a black core can be U, V, W, MB+, MB−, TF+ or TF−. Use the moulded pin marking, the cable label and a continuity check.</p>'+
+   '<p>Shield termination is part of the connector choice. A metal shell and a proper gland can bond the shield at the housing; a plastic shell may rely on a drain wire and a separate PE connection. For EMC, a 360° bond at both ends (or the arrangement specified by the drive manual) is much better than a long pigtail. The shell material alone does not guarantee a good bond.</p>'),
+  card('Choosing the variant: what changes between cables',
+   '<p>NORD’s cable names encode the family and the ends. The overview uses SC P… for power, SC H… for hybrid and SC S… for signal cables, followed by conductor size, connector type and length. Suffixes indicate UL/CSA or EU approval, halogen-free jacket, drag-chain suitability and other variants. The material number, not the description alone, identifies the exact part.</p>'+
+   ccFig(ccInlineMatrix(),'A simplified selection map. The real range has more rows, more connector combinations and several jacket and approval variants.')+
+   '<p>The subtle variants are the ones that cause returns. Straight versus angled changes clearance at the motor. Plastic versus metal changes shield bonding and mechanical robustness. One versus two locking levers changes mating force and vibration resistance. Open end versus moulded connector changes field-termination effort. UL/CSA versus EU changes the jacket and approval. Halogen-free, oil-resistant and drag-chain versions change the jacket compound. Length changes voltage drop and, for TTL encoders, signal quality.</p>'+
+   '<p>Daisy-chain cables are a separate case. They have a male and a female connector on the same cable so several decentralized drives can be fed in a line. NORD lists HAN Q4/2 and NQ16 daisy-chain variants. The current path, fusing and voltage drop of the whole chain still have to be designed; a daisy-chain connector does not make the chain unlimited.</p>'+
+   '<p>For encoder cable, length is an electrical limit, not just a commercial one. TTL differential signals have a maximum length that depends on the driver, receiver and clock rate; HTL is more forgiving but not unlimited. Capacitance, termination and shield quality all matter. For motor cable, length affects reflected-wave overvoltage and bearing currents; the drive manual may impose a maximum without a filter or reactor.</p>'+
+   '<p>Order by material number and keep the cable label with the machine. Record the connector type, length, pinout, encoder resolution and shield arrangement in the maintenance file. The next technician should not have to reverse-engineer a moulded connector to find out whether pin 5 is Z or 0 V.</p>'),
+  card('Wiring checks before power-up',
+   '<p>Isolate and prove dead first. Open the upstream protective device, lock and tag it, verify absence of voltage at the drive input, wait for the DC-link LED to extinguish, and measure the DC link before touching terminals. A drive can retain a dangerous DC voltage after the mains is removed.</p>'+
+   '<p>Then check continuity, not just appearance. Confirm each pin at one end reaches the intended pin at the other, with no cross-short to a neighbour. Check PE to the motor frame and to the drive PE bar. Check the brake coil resistance against the brake datasheet, and the thermistor resistance cold against the sensor curve. Check the shield from the connector shell to the drive PE bar; a floating shield is an antenna.</p>'+
+   '<p>For the encoder, verify the supply polarity before connecting a TTL device. Check A, B and Z (and their complements if used), the absolute node ID and baud rate, and the bus termination. For CANopen, measure the termination resistance with power off if the network is isolated. For a motor, check phase balance and insulation resistance at the appropriate test voltage, then confirm the brake releases at the specified voltage.</p>'+
+   '<p>First power should be no-load and low speed. Confirm direction, encoder sign and Z pulse, then apply load and log current, temperature and vibration. A reversed encoder or a swapped brake pair can look like a control fault; the wiring check is quicker than a tuning exercise.</p>'+
+   '<p>Finally, document what was fitted. The cable part number, length, connector type, pinout, encoder type and resolution, shield termination and any variant notes belong in the machine file. A photograph of the connector face and the cable label is cheap insurance for the next maintenance visit.</p>')
+ ],
+ sources:'Internal NORD references: Overview NORD cables (power, hybrid and signal families, connector ends and material numbers); Wiring power HAN Q5 Power IN; Wiring power HAN Q8 Motor; M12 control-connector template (incremental IG and absolute AG pinouts); encoder selection and absolute-encoder overview. Pinouts and colours are representative examples; verify the device manual and the cable data sheet before wiring.'
+});
+if(Array.isArray(related[19])&&!related[19].includes(44))related[19].push(44);
+if(Array.isArray(related[14])&&!related[14].includes(44))related[14].push(44);
+if(Array.isArray(funnels[20])&&!funnels[20].includes(44))funnels[20].push(44);
+if(Array.isArray(lessonOrder)&&!lessonOrder.includes(44))lessonOrder.push(44);
+// END CABLES AND CONNECTORS
 
 // FLOW_CORE_BRIDGE
 window.NordFlowCore={
