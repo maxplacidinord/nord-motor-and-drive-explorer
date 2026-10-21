@@ -8916,10 +8916,10 @@ const scCaptions={
  14:['How the drive controls the motor','A command goes in; the drive chooses the voltage, and feedback helps it correct the result.'],
  7:['Where braking energy goes','Follow energy from the moving load back through the drive.'],
  16:['The shaft brake has its own electrical circuit','Motor power makes torque. Power to the brake coil releases the spring-applied brake.'],
- 44:['Wiring, cables and connectors','Follow power, brake, thermistor and encoder circuits from drive to motor, then read the connector pinout.'],
+ 44:['Wiring, cables and connectors','Power, brake, thermistor, incremental and absolute encoder circuits, connector pinouts, and the encoder interface of each NORD drive family.'],
  41:['Stopping and restarting are separate actions','Remove permission, restore the conditions, then issue a fresh start command in this example.']
 };
-const scEssential={0:[],8:['supply'],9:['dcMode','supply'],28:['maSwState','maSwCurrentAngle'],44:['ccView'],20:['motorPanel','motor','frequency','connection'],10:['torque','speedrpm'],
+const scEssential={0:[],8:['supply'],9:['dcMode','supply'],28:['maSwState','maSwCurrentAngle'],44:['ccView','ccRoute','ccCore','ccEncoder','ccResolution','ccComplement','ccAbsTurns','ccAbsMode','ccAbsRes','ccAbsCode','ccAbsInterface','ccDriveFamily','ccPins','ccApp'],20:['motorPanel','motor','frequency','connection'],10:['torque','speedrpm'],
  42:['pmHuntCase','pmHuntLoad'],14:['scControlMode'],7:['brake','speedrpm','torque'],16:['rxSupply','rxCoil','rxView'],41:[]};
 let scReady=false,scBusy=false,scPendingToggle=null;
 function scMoreOpen(){return !!$('sc-more')?.open;}
@@ -10516,7 +10516,7 @@ const ccPinSets={
   {n:'PE',f:'Protective earth',c:'Green/yellow'}
  ]}
 };
-const ccViewOptions=[['chain','1 · Connection chain'],['motor','2 · Motor cable'],['encoder','3 · Encoder cable'],['pins','4 · Connector pinout'],['select','5 · Cable selection']];
+const ccViewOptions=[['chain','1 · Connection chain'],['motor','2 · Motor cable'],['encoder','3 · Encoder cable'],['absolute','4 · Absolute encoders'],['pins','5 · Connector pinout'],['select','6 · Cable selection'],['drives','7 · Drive interfaces']];
 const ccAppOptions=[['mains','Mains input'],['motor','Motor'],['brake','Brake resistor'],['enc','Encoder'],['bus','Bus / Ethernet'],['daisy','Daisy-chain']];
 function ccFig(svg,caption){return mfFig(svg,caption);}
 function ccConn(x,y,label,color=L,w=58,h=28){e('rect',{x:x-w/2,y:y-h/2,width:w,height:h,rx:7,fill:'#142437',stroke:color,'stroke-width':1.5});tx(x,y+4,label,color,11,'','middle');}
@@ -10561,6 +10561,13 @@ function ccChain(){
   });
   if(i===0||i===3){e('rect',{x:345,y:lane.y-18,width:412,height:42,rx:16,fill:'none',stroke:'#4a6076','stroke-width':1,'stroke-dasharray':'4 4'});}
   if(!hybrid){ccConn(318,lane.y,i===0?'Q8':i===1?'Q2':i===2?'M12':'M12',i===0?C[0]:i===1?C[1]:i===2?G:C[2],52,24);ccConn(782,lane.y,i===0?'10E':i===1?'Q2':i===2?'M12':'M12',i===0?C[0]:i===1?C[1]:i===2?G:C[2],52,24);}
+ });
+ // Moving markers make the signal route visible when the transport runs.
+ const flowPhase=maWrap(angle)/360;
+ lanes.forEach((lane,i)=>{
+  if(i!==0&&i!==3)return;
+  const travel=396,x=352+((flowPhase*travel+i*58)%travel),c=i===0?C[0]:C[2];
+  circle(x,lane.y,3.4,c,c,1);circle(x-9,lane.y,1.9,c,c,.8);circle(x-17,lane.y,1.2,c,c,.55);
  });
  if(hybrid){ccConn(318,306,'HYBRID',L,64,32);ccConn(782,306,'HYBRID',L,64,32);}
  // PE bus
@@ -10724,21 +10731,211 @@ function ccSelect(){
  tx(40,662,'The matrix is a map of the range, not a stock list. Use the material number and the technical information sheet for the selected cable.',M,10);
  metrics([['Cable families','3'],['Connector ends','10+'],['Shielded options','Yes'],['Variant keys','Length · angle · material']]);
 }
+function ccAbsArc(cx,cy,rad,a0,a1,color,width,parent){
+ const p0=[cx+rad*Math.cos(r(a0)),cy+rad*Math.sin(r(a0))],p1=[cx+rad*Math.cos(r(a1)),cy+rad*Math.sin(r(a1))];
+ return e('path',{d:'M'+p0[0]+' '+p0[1]+' A'+rad+' '+rad+' 0 0 1 '+p1[0]+' '+p1[1],stroke:color,'stroke-width':width,fill:'none','stroke-linecap':'butt'},undefined,parent);
+}
+function ccAbsBits(x,y,bits,value,color,label,boxW=26){
+ const shown=Math.min(bits,13);
+ if(label)tx(x,y-8,label,color,11);
+ for(let i=0;i<shown;i++){
+  const bit=(value>>(bits-1-i))&1,xx=x+i*(boxW+3);
+  e('rect',{x:xx,y,width:boxW,height:28,rx:4,fill:bit?color+'33':'#1a2a3e',stroke:bit?color:'#4a6379','stroke-width':bit?1.5:1});
+  tx(xx+boxW/2,y+19,String(bit),bit?color:M,12,'','middle');
+ }
+ if(bits>shown)tx(x+shown*(boxW+3)+3,y+19,'… +'+(bits-shown),M,10);
+ return x+shown*(boxW+3);
+}
+function ccAbsSine(x,y,w,h,cycles,color,phase=0){
+ let d='';
+ for(let i=0;i<=w;i++){const yy=y+h/2*Math.sin((i/w)*cycles*2*Math.PI+phase);d+=(i?' L':'M')+(x+i)+' '+yy;}
+ e('path',{d,stroke:color,'stroke-width':2,fill:'none'});
+}
+function ccAbsFrame(iface,x,y,w,h,pos,res,turns,turnsBits,code,posMax){
+ const names={ssi:'SSI',biss:'BiSS-C',endat:'EnDat 2.2',hiper:'HIPERFACE',can:'CANopen DS406'};
+ if(iface==='can'){
+  const items=[['COB-ID','0x180 + ID',118],['DLC','8',42],['D0–D3','turns',92],['D4–D7','angle',92],['CRC','auto',62]];
+  let xx=x+4;
+  items.forEach(([a,b,bw])=>{
+   e('rect',{x:xx,y:y+18,width:bw,height:34,rx:4,fill:'#1a2d42',stroke:'#4a6379'});
+   tx(xx+5,y+34,a,M,9);tx(xx+5,y+48,b,C[2],10);
+   xx+=bw+4;
+  });
+  tx(x+4,y+92,'11-bit COB-ID · PDO / SDO · heartbeat · 120 Ω at both ends',M,10);
+  tx(x+4,y+114,'Node ID and baud rate are configuration, not wiring.',M,10);
+  tx(x+4,y+136,'The drive maps position, speed and status into its process image.',M,10);
+ }else if(iface==='hiper'){
+  tx(x+4,y+30,'Parameter channel',C[2],10);
+  ccTrack(x+150,y+20,w-160,20,42,.5,0,C[2],2);
+  tx(x+4,y+78,'Sin / cos',G,10);
+  ccAbsSine(x+150,y+58,w-160,42,2,G);
+  tx(x+4,y+116,'Absolute position + parameter access over one 5 V link.',M,10);
+  tx(x+4,y+138,'The drive needs the matching HIPERFACE evaluation hardware.',M,10);
+ }else{
+  tx(x+4,y+30,'Clock',C[0],10);
+  ccTrack(x+70,y+18,w-80,22,36,.5,0,C[0],2);
+  tx(x+4,y+76,'Data',C[2],10);
+  const n=Math.min(res,10),bw=22;
+  for(let i=0;i<n;i++){
+   const bit=(pos>>(res-1-i))&1,xx=x+70+i*(bw+3);
+   e('rect',{x:xx,y:y+62,width:bw,height:24,rx:3,fill:bit?C[2]+'33':'#1a2a3e',stroke:bit?C[2]:'#4a6379'});
+   tx(xx+bw/2,y+79,String(bit),bit?C[2]:M,10,'','middle');
+  }
+  tx(x+70+n*(bw+3)+4,y+79,'…',M,12);
+  tx(x+4,y+122,iface==='ssi'?'Clock burst · data MSB first · Gray or binary':iface==='biss'?'BiSS-C · CRC + register access · bidirectional':'EnDat 2.2 · position + parameters · safety variants',M,10);
+  tx(x+4,y+144,'Word: '+res+' bit'+(turnsBits?' + '+turnsBits+' bit turns':'')+' · '+code+' code',M,10);
+ }
+}
+function ccAbsolute(){
+ const res=Math.max(13,Math.min(23,+settings.ccAbsRes||13));
+ const turnsBits=(settings.ccAbsTurns||'12')==='16'?16:12;
+ const multi=(settings.ccAbsMode||'multi')!=='single';
+ const posMax=Math.pow(2,res),turnsMax=multi?Math.pow(2,turnsBits):1;
+ const pos=Math.floor(maWrap(angle)/360*posMax)%posMax;
+ const turns=multi?(Math.floor(Math.abs(motion)/360)%turnsMax):0;
+ const total=turns*posMax+pos;
+ const code=settings.ccAbsCode==='binary'?'binary':'gray';
+ const codeTotal=code==='gray'?(total^(total>>1)):total;
+ const codePos=codeTotal%posMax,codeTurn=Math.floor(codeTotal/posMax);
+ const iface=settings.ccAbsInterface||'ssi';
+ const labels={ssi:'SSI',biss:'BiSS-C',endat:'EnDat 2.2',hiper:'HIPERFACE',can:'CANopen DS406'};
+ const ifaceLabel=labels[iface]||'SSI';
+ tx(40,38,'Inside an absolute encoder',L,22);
+ tx(40,62,'A code disc, a fixed read head and a position word: the interface carries the answer, not a pulse count.',M,13);
+ maPanel(35,92,545,565,'Code disc and read head','schematic; 5 of '+res+' single-turn tracks shown');
+ const cx=290,cy=350,R=152;
+ circle(cx,cy,R+20,'#3d566d','#142437',3);circle(cx,cy,R+10,'#263c51','none',1);
+ const g=e('g',{transform:'rotate('+angle+' '+cx+' '+cy+')'});
+ const cols=[C[0],C[1],C[2],G,'#e8f1f8'];
+ for(let t=0;t<5;t++){
+  const rad=132-t*18;
+  e('circle',{cx,cy,r:rad,stroke:'#1c2f42','stroke-width':14,fill:'none'},undefined,g);
+  for(let s=0;s<16;s++){
+   if(((s>>t)&1)===0)continue;
+   ccAbsArc(cx,cy,rad,-s*22.5-90,-s*22.5-71,cols[t],14,g);
+  }
+ }
+ for(let s=0;s<16;s++){
+  const a=-s*22.5-90,x1=cx+52*Math.cos(r(a)),y1=cy+52*Math.sin(r(a)),x2=cx+142*Math.cos(r(a)),y2=cy+142*Math.sin(r(a));
+  e('line',{x1,y1,x2,y2,stroke:'#2b3f54','stroke-width':1},undefined,g);
+ }
+ e('circle',{cx,cy,r:40,fill:'#0e1b2a',stroke:'#6d879e','stroke-width':2},undefined,g);
+ e('circle',{cx,cy,r:12,fill:L,stroke:L},undefined,g);
+ tx(cx,cy+4,'shaft','#0b1724',9,'','middle');
+ // Fixed read head and light beam.
+ e('rect',{x:cx-26,y:cy-R-50,width:52,height:30,rx:6,fill:'#1a2d42',stroke:C[0],'stroke-width':2});
+ tx(cx,cy-R-30,'HEAD',C[0],9,'','middle');
+ line(cx,cy-R-20,cx,cy-R+2,C[0],1.6,'','4 3');
+ e('path',{d:'M'+(cx-7)+' '+(cy-R-18)+' L'+(cx+7)+' '+(cy-R-18)+' L'+cx+' '+(cy-R-2)+' Z',fill:C[0],opacity:.35,stroke:'none'});
+ const seg=Math.floor(maWrap(angle)/22.5)%16;
+ tx(cx+R+30,cy-132,'MSB',C[0],9);tx(cx+R+30,cy-24,'LSB',M,9);
+ for(let t=0;t<5;t++)tx(cx+R+30,cy-114+t*18,'b'+String(res-1-t),cols[t],9);
+ tx(70,535,'Shaft angle',M,11);tx(70,566,f(maWrap(angle),1)+'°',L,26);
+ tx(192,566,'single-turn '+f(pos,0),C[0],12);
+ tx(70,606,'Decoded position',M,11);tx(70,634,f(total,0)+' counts',C[1],18);
+ maPanel(600,92,465,285,'Position word',ifaceLabel+' · '+code+' code');
+ tx(620,160,'Single-turn',C[0],12);
+ ccAbsBits(620,170,res,codePos,C[0],'');
+ tx(620,230,res+' bits · '+f(posMax,0)+' positions / turn',M,10);
+ tx(620,262,'Multi-turn',C[1],12);
+ if(multi){
+  ccAbsBits(620,272,turnsBits,codeTurn,C[1],'');
+  tx(620,332,turnsBits+' bits · '+f(turnsMax,0)+' turns',M,10);
+ }else{
+  e('rect',{x:620,y:272,width:300,height:28,rx:4,fill:'#1a2a3e',stroke:'#4a6379'});
+  tx(628,291,'not stored in a single-turn encoder',M,11);
+  tx(620,332,'range = one revolution',M,10);
+ }
+ tx(620,362,'total = '+f(total,0)+'  ·  '+(res+(multi?turnsBits:0))+' bit',L,11);
+ maPanel(600,392,465,265,'Protocol frame',ifaceLabel);
+ ccAbsFrame(iface,620,432,425,190,pos,res,turns,multi?turnsBits:0,code,posMax);
+ tx(40,700,'The disc is a teaching model. Real absolute encoders use optical, magnetic or inductive scanning and may retain turns with a battery, Wiegand wire or gear train.',M,10);
+ metrics([['Type',multi?'Multi-turn':'Single-turn'],['Single-turn',res+' bit'],['Turns',multi?turnsBits+' bit':'—'],['Interface',ifaceLabel]]);
+}
+const ccDriveRows=[
+ {id:'start',family:'START',models:'SK 135E · 175E',inc:'—',abs:'—',opt:'—',note:'Motor starter / V/f; no encoder feedback in the base unit.',state:'none'},
+ {id:'base',family:'BASE',models:'SK 180E · 190E',inc:'—',abs:'—',opt:'—',note:'V/f and sensorless; no encoder input in the base unit.',state:'none'},
+ {id:'flex',family:'FLEX',models:'SK 200E · 2x5E',inc:'HTL',abs:'CANopen DS406',opt:'SK TIE4-M12-HTL · CANopen option',note:'Incremental HTL and CANopen absolute in the local reference set.',state:'ok'},
+ {id:'link',family:'LINK',models:'SK 250E-FDS · 155E-FDS',inc:'Check',abs:'Check',opt:'Check model code',note:'Decentralized family; encoder support depends on variant.',state:'check'},
+ {id:'on',family:'ON',models:'SK 300P · ON+ · ON PURE',inc:'—',abs:'—',opt:'—',note:'Compact V/f; no encoder input in the base unit. Check variant.',state:'none'},
+ {id:'fusion',family:'FUSION',models:'motor + inverter',inc:'Check',abs:'Check',opt:'Check model code',note:'Integrated motor and drive; do not assume an encoder input.',state:'check'},
+ {id:'pro500e',family:'PRO 500E',models:'SK 520E · 530E · 535E · 540E',inc:'TTL / HTL',abs:'SSI · CANopen',opt:'Encoder option · SK 54xE',note:'Documented for SK 53xE / 54xE; 520E may differ. POSICON for positioning.',state:'ok'},
+ {id:'pro500p',family:'PRO 500P',models:'SK 500P · 530P · 550P',inc:'TTL / HTL',abs:'Check SSI / CANopen',opt:'Encoder option',note:'Local manual p.64 shows TTL inputs and 10–30 V supply; confirm absolute option.',state:'check'},
+ {id:'legacy700',family:'Legacy 700E',models:'SK 700E',inc:'TTL / HTL',abs:'SSI with POS',opt:'SK TU1-ENC · SK TU1-POS',note:'Incremental speed or POSICON positioning; option module required.',state:'ok'},
+ {id:'legacy1000',family:'Legacy 1000E',models:'SK 1000E',inc:'Check',abs:'Check',opt:'Check model code',note:'Large legacy drive; verify the fitted encoder option.',state:'check'},
+ {id:'other',family:'Other / OEM',models:'special variants',inc:'Check',abs:'Check',opt:'Check model code',note:'Do not infer an encoder input from the family name.',state:'check'}
+];
+function ccNoteLines(text,max){
+ if(text.length<=max)return [text];
+ const cut=text.lastIndexOf(' ',max);
+ if(cut<20)return [text.slice(0,max),text.slice(max)];
+ return [text.slice(0,cut),text.slice(cut+1)];
+}
+function ccDrives(){
+ const selected=settings.ccDriveFamily||'pro500e';
+ tx(40,38,'Every drive family: where the encoder enters',L,22);
+ tx(40,62,'A family name is not a compatibility statement. The model code, option slot, firmware and encoder supply decide.',M,13);
+ maPanel(35,92,1030,610,'Encoder interface by NORD drive family','local reference set · green = named in a local NORD document · amber = check model code / option slot');
+ const cx=[62,148,318,430,548,730];
+ tx(cx[0],160,'Drive family',M,10);tx(cx[1],160,'Models',M,10);tx(cx[2],160,'Incremental',M,10);tx(cx[3],160,'Absolute',M,10);tx(cx[4],160,'Option / module',M,10);tx(cx[5],160,'What the reference says',M,10);
+ [318,430,548,730].forEach(x=>line(x,172,x,640,'#2a4155',1));
+ ccDriveRows.forEach((row,i)=>{
+  const y=192+i*42,on=row.id===selected;
+  if(on)e('rect',{x:45,y:y-21,width:1008,height:40,rx:7,fill:'#b7f568',opacity:.07,stroke:'#6f8f58','stroke-width':1.2});
+  const dot=row.state==='ok'?G:row.state==='check'?C[1]:'#5b6f83';
+  circle(52,y-4,4,dot,dot,1);
+  tx(62,y,row.family,on?L:'#d5e3ef',13,'',on?'600':'400');
+  tx(148,y,row.models,'#a9bbcf',9);
+  tx(326,y,row.inc,row.inc==='—'?'#5b6f83':'#d5e3ef',10);
+  tx(438,y,row.abs,row.abs==='—'?'#5b6f83':'#d5e3ef',10);
+  tx(556,y,row.opt,row.opt==='—'?'#5b6f83':'#d5e3ef',9);
+  const lines=ccNoteLines(row.note,58);
+  tx(738,y-2,lines[0],'#a9bbcf',9);
+  if(lines[1])tx(738,y+10,lines[1],'#a9bbcf',9);
+ });
+ tx(45,672,'Green: the local reference set names an encoder interface for this family. Amber: the family may support an encoder, but the exact option, firmware and function must be checked.',M,10);
+ tx(45,690,'NORDAC START, BASE and ON are V/f or sensorless families; an encoder is not part of the base unit. NORDAC FLEX and PRO have optional feedback paths.',M,10);
+ const row=ccDriveRows.find(r=>r.id===selected)||ccDriveRows[5];
+ metrics([['Selected',row.family],['Incremental',row.inc],['Absolute',row.abs],['Option',row.opt.length>22?row.opt.slice(0,20)+'…':row.opt]]);
+}
 function ccDraw(){
  maFrame(740);
+ if(maPages[44]){
+  const animated=settings.ccView==='chain'||settings.ccView==='absolute';
+  maPages[44].animate=animated;maPages[44].loop=true;
+  maPages[44].animationLabel=settings.ccView==='absolute'?'Shaft angle':'Signal-flow position';
+  maPages[44].cursorLabel=a=>settings.ccView==='absolute'?f(maWrap(a),1)+'°':f(a/360*100,0)+'%';
+  maPages[44].controlsNote=ccControlsNote(settings.ccView);
+ }
  if(settings.ccView==='motor')ccMotor();
  else if(settings.ccView==='encoder')ccEncoder();
+ else if(settings.ccView==='absolute')ccAbsolute();
  else if(settings.ccView==='pins')ccPins();
  else if(settings.ccView==='select')ccSelect();
+ else if(settings.ccView==='drives')ccDrives();
  else ccChain();
+}
+function ccControlsNote(view){
+ if(view==='absolute')return 'Play to rotate the shaft and update the position word; scrub to freeze a position. The disc is schematic.';
+ if(view==='chain')return 'Play to move the signal-flow markers along the power and encoder route.';
+ return 'Change the inputs to compare the wiring and interface options.';
 }
 function ccControls(){
  maSelect('ccView','Section',ccViewOptions);
  const v=settings.ccView;
+ if(maPages[44])maPages[44].controlsNote=ccControlsNote(v);
  if(v==='chain'){maSelect('ccRoute','Cable route',[['separate','Separate cables'],['hybrid','One hybrid cable']]);}
  else if(v==='motor'){maSelect('ccCore','Highlight conductor',[['U','U phase'],['V','V phase'],['W','W phase'],['PE','Protective earth'],['brake','Brake pair'],['tf','Thermistor pair'],['shield','Overall shield']]);}
  else if(v==='encoder'){maSelect('ccEncoder','Encoder principle',[['incremental','Incremental A/B/Z'],['absolute','Absolute serial / CANopen']]);if(settings.ccEncoder==='incremental'){maSelect('ccResolution','Pulses per revolution',[['512','512'],['1024','1024'],['2048','2048'],['4096','4096']]);maToggle('ccComplement','Show complementary tracks');}else{maSelect('ccAbsTurns','Multi-turn counter',[['12','12-bit · 4096 turns'],['16','16-bit · 65,536 turns']]);}}
+ else if(v==='absolute'){
+  maSelect('ccAbsMode','Encoder type',[['multi','Multi-turn'],['single','Single-turn']]);
+  maSelect('ccAbsRes','Single-turn resolution',[['13','13 bit · 8,192'],['17','17 bit · 131,072'],['19','19 bit · 524,288'],['21','21 bit · 2,097,152'],['23','23 bit · 8,388,608']]);
+  if(settings.ccAbsMode!=='single')maSelect('ccAbsTurns','Multi-turn counter',[['12','12-bit · 4,096 turns'],['16','16-bit · 65,536 turns']]);
+  maSelect('ccAbsCode','Transmission code',[['gray','Gray code'],['binary','Binary code']]);
+  maSelect('ccAbsInterface','Interface',[['ssi','SSI'],['biss','BiSS-C'],['endat','EnDat 2.2'],['hiper','HIPERFACE'],['can','CANopen DS406']]);
+ }
  else if(v==='pins'){maSelect('ccPins','Connector',[['m12-8','M12 A · 8-pin · IG0'],['m12-4','M12 A · 4-pin · IG'],['m12-ag','M12 A · 5-pin · AG'],['han-q8','HAN Q8 · motor'],['han-q5','HAN Q5 · power in']]);}
+ else if(v==='drives'){maSelect('ccDriveFamily','Drive family',ccDriveRows.map(r=>[r.id,r.family+' · '+r.models]));}
  else {maSelect('ccApp','Application',ccAppOptions);}
 }
 // Inline article figures, 720 px wide like the other reference cards.
@@ -10803,6 +11000,40 @@ function ccInlinePins(){
  s+=mfT(450,202,'not implied by colour.','#9fb0c7',9);
  return s+'</svg>';
 }
+function ccInlineAbsolute(){
+ let s='<svg viewBox="0 0 720 250" role="img" aria-label="Absolute encoder signal chain">';
+ s+='<rect width="720" height="250" fill="#0b1724"/>';
+ s+=mfT(24,30,'From code disc to drive word','#e8f1f8',16,'start','600');
+ const blocks=[['Code disc','optical / magnetic tracks',28],['Read head','fixed scan point',186],['Digitise','amplify, sample, decode',344],['Interface','SSI · BiSS · EnDat · CAN',502]];
+ blocks.forEach(([t,sub,x],i)=>{s+='<rect x="'+x+'" y="66" width="142" height="78" rx="9" fill="#122132" stroke="'+['#5bd9ff','#ffc475','#c5a1ff','#9aefb3'][i]+'"/>';s+=mfT(x+71,93,t,'#e8f1f8',12,'middle','600');s+=mfT(x+71,113,sub,'#9fb0c7',8.5,'middle');if(i<3)s+=mfL(x+144,105,x+182,105,'#4a6379',2);});
+ s+='<circle cx="99" cy="122" r="22" fill="none" stroke="#5bd9ff" stroke-width="3"/><circle cx="99" cy="122" r="12" fill="none" stroke="#5bd9ff" stroke-width="2" stroke-dasharray="4 3"/><circle cx="99" cy="122" r="4" fill="#5bd9ff"/>';
+ s+=mfT(28,178,'Single-turn: angle inside one revolution.','#ffc475',10);
+ s+=mfT(28,198,'Multi-turn: a gear train, battery or Wiegand element adds the revolution count.','#9aefb3',10);
+ s+=mfT(28,224,'Absolute means the code is valid at power-up inside its range; it does not remove backlash, slip or a wrong datum.','#9fb0c7',9);
+ return s+'</svg>';
+}
+function ccInlineCode(){
+ let s='<svg viewBox="0 0 720 250" role="img" aria-label="Binary and Gray code comparison">';
+ s+='<rect width="720" height="250" fill="#0b1724"/>';
+ s+=mfT(24,30,'Gray code changes one bit per step','#e8f1f8',16,'start','600');
+ s+=mfT(30,62,'Decimal','#9fb0c7',10);s+=mfT(112,62,'Binary','#9fb0c7',10);s+=mfT(210,62,'Gray','#9fb0c7',10);s+=mfT(300,62,'Bits changed at this step','#9fb0c7',10);
+ for(let n=0;n<8;n++){
+  const y=86+n*19,bin=n.toString(2).padStart(3,'0'),gray=(n^(n>>1)).toString(2).padStart(3,'0'),changed=n===0?'—':((n^(n-1)).toString(2).match(/1/g)||[]).length;
+  s+=mfT(38,y,String(n),n===4?'#b7f568':'#d5e3ef',10,'middle','600');
+  s+=mfT(118,y,bin,'#5bd9ff',11,'middle');
+  s+=mfT(214,y,gray,'#ffc475',11,'middle');
+  s+=mfT(348,y,String(changed),n===4?'#b7f568':'#d5e3ef',10,'middle');
+ }
+ s+='<rect x="440" y="82" width="250" height="130" rx="9" fill="#122132" stroke="#4a6379"/>';
+ s+=mfT(458,108,'gray = binary XOR (binary >> 1)','#b7f568',10);
+ s+=mfT(458,132,'Only one track changes between','#9fb0c7',9);
+ s+=mfT(458,148,'adjacent positions, so a misaligned','#9fb0c7',9);
+ s+=mfT(458,164,'read head cannot produce a false','#9fb0c7',9);
+ s+=mfT(458,180,'intermediate code at a boundary.','#9fb0c7',9);
+ s+=mfT(458,202,'Binary is easier to read; Gray is safer.','#ffc475',9);
+ s+=mfT(30,230,'The receiver must know the code, bit width and bit order. A Gray word decoded as binary is a valid but wrong position.','#9fb0c7',9);
+ return s+'</svg>';
+}
 function ccInlineMatrix(){
  let s='<svg viewBox="0 0 720 230" role="img" aria-label="Cable selection matrix">';
  s+='<rect width="720" height="230" fill="#0b1724"/>';
@@ -10816,12 +11047,12 @@ maRegister(44,{
  slug:'cables-connectors',
  nav:'Wiring & cables',
  title:'Wiring, cables and connectors',
- sub:'Follow the power, brake, thermistor and encoder wiring from drive to motor, read the pinout, and choose the right cable variant.',
- idea:'Wiring a drive installation is several electrical jobs sharing one route: three power phases with protective earth, a DC brake release pair, a thermistor circuit and an encoder feedback cable. The connector is not cosmetic. Its coding, pole count, contact size and shield termination decide which signals can pass and how robustly. NORD’s range reflects that with power, hybrid and signal cables, open ends or moulded connectors such as HAN Q4/2, Q5, Q8, HAN 10E, M12, M23, ST8 and NQ16. Read the circuit first, then the connector, then the variant.',
- limit:'Teaching schematic and wiring overview, not a NORD selection or installation instruction. Pin assignments are representative examples taken from NORD wiring documents: HAN Q5 power input, HAN Q8 motor, M12 incremental and absolute encoder connections. Pin numbers, colours and terminal numbers can change with drive series, motor size, encoder type, cable length and variant. Always use the label on the device, the cable data sheet and the applicable manual. The drawings omit contact resistance, current derating, bend radius, chemical compatibility, fire performance, maximum cable length and local installation rules. The matrix is a map of the range, not a stock list.',
- take:'Match the connector and cable to the signal: power, brake, thermistor and encoder are different circuits, even when they share one hybrid jacket.',
+ sub:'Follow the power, brake, thermistor and encoder wiring from drive to motor, read the pinout, watch the absolute-encoder model, and compare the encoder interface of every NORD drive family.',
+ idea:'Wiring a drive installation is several electrical jobs sharing one route: three power phases with protective earth, a DC brake release pair, a thermistor circuit and an encoder feedback cable. The connector is not cosmetic. Its coding, pole count, contact size and shield termination decide which signals can pass and how robustly. NORD’s range reflects that with power, hybrid and signal cables, open ends or moulded connectors such as HAN Q4/2, Q5, Q8, HAN 10E, M12, M23, ST8 and NQ16. The encoder side has its own logic: incremental A/B/Z reports movement, while an absolute encoder reports a coded position. Single-turn, multi-turn, Gray code, SSI, BiSS, EnDat, HIPERFACE and CANopen are different answers to different questions. The drive family decides which of those answers it can accept. Read the circuit first, then the connector, then the interface, then the variant.',
+ limit:'Teaching schematic and wiring overview, not a NORD selection or installation instruction. Pin assignments are representative examples taken from NORD wiring documents: HAN Q5 power input, HAN Q8 motor, M12 incremental and absolute encoder connections. Pin numbers, colours and terminal numbers can change with drive series, motor size, encoder type, cable length and variant. Absolute-encoder resolutions, protocol bit widths and drive-family rows are a snapshot of the local reference set; they are not a current compatibility list. A family name, a connector that fits or a protocol name does not prove that a particular drive, option, firmware and encoder combination is supported. Always use the label on the device, the full model code, the encoder data sheet, the option manual and the applicable drive manual. The drawings omit contact resistance, current derating, bend radius, chemical compatibility, fire performance, maximum cable length, functional-safety validation and local installation rules. The matrix is a map of the range, not a stock list.',
+ take:'Match the connector and cable to the signal, then match the encoder interface to the drive option: power, brake, thermistor, incremental and absolute are different circuits even when they share one jacket.',
  stage:'motor',parent:20,related:[19,14,20,31,16,7],
- defaults:{ccView:'chain',ccRoute:'separate',ccCore:'U',ccEncoder:'incremental',ccResolution:'1024',ccComplement:true,ccAbsTurns:'12',ccPins:'m12-8',ccApp:'motor'},
+ defaults:{ccView:'chain',ccRoute:'separate',ccCore:'U',ccEncoder:'incremental',ccResolution:'1024',ccComplement:true,ccAbsTurns:'12',ccAbsMode:'multi',ccAbsRes:'13',ccAbsCode:'gray',ccAbsInterface:'ssi',ccDriveFamily:'pro500e',ccPins:'m12-8',ccApp:'motor'},
  controlsTitle:'Browse the sections',
  controls(){ccControls();},
  draw:ccDraw,
@@ -10845,7 +11076,8 @@ maRegister(44,{
    '<p>Absolute encoders transmit a coded position over a serial link. Single-turn resolution gives the angle within one revolution; multi-turn adds a revolution counter. NORD’s absolute-encoder overview lists CANopen DS406 units with 13-bit single-turn resolution and 12-bit or 16-bit multi-turn resolution, in both singleturn and multiturn versions. Some variants also provide incremental signals. The interface, node ID and baud rate must match the drive.</p>'+
    '<p>The electrical layer matters as much as the protocol. TTL encoders use differential 5 V signals and are relatively sensitive to noise and cable length. HTL encoders use a higher-voltage push-pull or open-collector output and are more robust, but still need a shield and a clean reference. Complementary signals, A/Ā, B/B̄ and Z/Z̄, improve noise immunity and allow the receiver to detect a broken pair. A TTL encoder without complementary tracks needs the unused inputs terminated as the drive manual requires.</p>'+
    '<p>NORD’s M12 examples show the pattern. The incremental IG connection uses +24 V on pin 1, B on pin 2, 0 V on pin 3 and A on pin 4; the five-pin IG0 version adds Z on pin 5. The absolute AG connection uses +24 V on pin 2, 0 V on pin 3, SYS H on pin 4 and SYS L on pin 5, with the shield on pin 1. These are representative; the drive series and encoder variant can change the map.</p>'+
-   '<p>Commissioning checks are specific: supply voltage, A/B phase for direction, Z once per revolution, complementary levels, absolute node ID and baud rate, and CANopen termination. Use a scope or an encoder tester rather than guessing from the drive display. Do not hot-plug an encoder connector while the drive is powered.</p>'),
+   '<p>Commissioning checks are specific: supply voltage, A/B phase for direction, Z once per revolution, complementary levels, absolute node ID and baud rate, and CANopen termination. Use a scope or an encoder tester rather than guessing from the drive display. Do not hot-plug an encoder connector while the drive is powered.</p>'+
+    '<p>Section 4 animates the code disc and the position word; section 7 compares the encoder interface of the NORD drive families. The animation is a teaching model, not a timing or accuracy specification.</p>'),
   card('Connector families and pinouts',
    '<p>M12 is the compact circular family. A-coded is used for signals and small power feeds, B-coded for fieldbus such as CANopen, and D-coded for Ethernet. The same shell is available in 4, 5 and 8 poles, male or female, straight or angled, metal or plastic. NORD uses M12 A-coded 8-pin leads for incremental encoders and M12 A/B/D-coded leads for signal and network connections.</p>'+
    ccFig(ccInlinePins(),'Two faces, two different maps. The M12 shell is compact and keyed; the HAN Q8 insert carries power, brake and thermistor in one rectangular housing.')+
@@ -10865,9 +11097,125 @@ maRegister(44,{
    '<p>Then check continuity, not just appearance. Confirm each pin at one end reaches the intended pin at the other, with no cross-short to a neighbour. Check PE to the motor frame and to the drive PE bar. Check the brake coil resistance against the brake datasheet, and the thermistor resistance cold against the sensor curve. Check the shield from the connector shell to the drive PE bar; a floating shield is an antenna.</p>'+
    '<p>For the encoder, verify the supply polarity before connecting a TTL device. Check A, B and Z (and their complements if used), the absolute node ID and baud rate, and the bus termination. For CANopen, measure the termination resistance with power off if the network is isolated. For a motor, check phase balance and insulation resistance at the appropriate test voltage, then confirm the brake releases at the specified voltage.</p>'+
    '<p>First power should be no-load and low speed. Confirm direction, encoder sign and Z pulse, then apply load and log current, temperature and vibration. A reversed encoder or a swapped brake pair can look like a control fault; the wiring check is quicker than a tuning exercise.</p>'+
-   '<p>Finally, document what was fitted. The cable part number, length, connector type, pinout, encoder type and resolution, shield termination and any variant notes belong in the machine file. A photograph of the connector face and the cable label is cheap insurance for the next maintenance visit.</p>')
+   '<p>Finally, document what was fitted. The cable part number, length, connector type, pinout, encoder type and resolution, shield termination and any variant notes belong in the machine file. A photograph of the connector face and the cable label is cheap insurance for the next maintenance visit.</p>'),
+   card('Absolute encoders: the position word',
+    '<p>An incremental encoder reports <b>movement</b>: a pulse train that a counter integrates. An absolute encoder reports a <b>code</b> that identifies position inside its measuring range. That difference changes the restart strategy. A single-turn absolute encoder knows the angle within one revolution as soon as it is powered. A multi-turn absolute encoder also knows how many revolutions have passed, within its turn-count range. Neither one knows the machine datum until the datum has been established, and neither one can remove backlash, belt slip or a wrong gear ratio.</p>'+
+    ccFig(ccInlineAbsolute(),'The signal chain of an absolute encoder: code disc, fixed read head, signal processing and a serial or network interface. The drive receives a position word, not a pulse count.')+
+    '<p><b>Single-turn resolution</b> is the number of code positions per revolution. A 13-bit word has 2<sup>13</sup> = 8,192 positions; a 23-bit word has 8,388,608. The nominal angle per count is 360° / 2<sup>resolution</sup>. This is a quantisation step, not an accuracy guarantee. The encoder also has optical or magnetic interpolation error, integral and differential nonlinearity, hysteresis, temperature drift and mounting error.</p>'+
+    '<table><thead><tr><th>Single-turn bits</th><th>Positions per turn</th><th>Nominal angle per count</th><th>Typical use</th></tr></thead><tbody>'+
+    [13,17,19,21,23].map(b=>'<tr><td>'+b+'</td><td>'+f(Math.pow(2,b),0)+'</td><td>'+f(360/Math.pow(2,b),6)+'°</td><td>'+({13:'speed and basic positioning',17:'general servo positioning',19:'fine positioning',21:'high-resolution servo',23:'very fine angular resolution'})[b]+'</td></tr>').join('')+
+    '</tbody></table>'+
+    '<p><b>Multi-turn resolution</b> adds a revolution counter. A 12-bit counter covers 4,096 turns; a 16-bit counter covers 65,536 turns. The total position is <b>turns × 2<sup>single-turn bits</sup> + single-turn position</b>. A 13-bit single-turn plus 12-bit multi-turn encoder therefore gives 25 bits, or 33,554,432 distinguishable positions across 4,096 turns. The counter may be kept by a gear train, a battery, a Wiegand wire or another energy-harvesting method. Each method has a different behaviour when the shaft moves while the encoder is unpowered.</p>'+
+    '<p><b>Code.</b> Binary code is the natural count. Gray code changes only one bit between adjacent positions, so a read head that is slightly misaligned at a boundary cannot produce a wild intermediate code. The conversion is <b>gray = binary XOR (binary &gt;&gt; 1)</b>; decoding repeats the shift and XOR. The receiver must know whether the word is Gray or binary, the bit width, the bit order and whether the turn count is included. A Gray word decoded as binary is a valid but wrong position.</p>'+
+    ccFig(ccInlineCode(),'Binary and Gray code for the first eight positions. Gray changes one bit per step; the receiver still has to be told which code it is reading.')+
+    '<p><b>What absolute does not mean.</b> It does not mean unlimited range, maintenance-free operation or no commissioning. A single-turn encoder cannot distinguish 10° from 370°. A multi-turn encoder can overflow or be moved while powerless. A replaced encoder usually needs the datum and offset re-established. A motor-side encoder sees motor rotation, not the actual load position after a gearbox, belt or coupling. Ask where the encoder is mounted and what the control loop actually uses.</p>'),
+   card('Interfaces: SSI, BiSS, EnDat, HIPERFACE and CANopen',
+    '<p>The interface is an electrical and protocol contract, not a connector shape. The same M12 shell can carry incremental A/B/Z, SSI clock/data, CANopen or a 24 V supply. Check the electrical layer, the data direction, the protocol, the supply, the termination and the firmware support before plugging anything in.</p>'+
+    '<table><thead><tr><th>Interface</th><th>Electrical layer</th><th>Direction / topology</th><th>Typical role</th><th>What to verify</th></tr></thead><tbody>'+
+    '<tr><td><b>SSI</b></td><td>RS-422 clock and data pairs, usually 5 V</td><td>Drive clocks; encoder answers. Point-to-point.</td><td>Absolute position word, 13–25 bits, Gray or binary.</td><td>Clock frequency, bit width, code, mono/bidirectional, cable length, termination.</td></tr>'+
+    '<tr><td><b>BiSS-C</b></td><td>RS-422, 5 V</td><td>Bidirectional, point-to-point or daisy-chain.</td><td>Position plus register access, CRC and diagnostics.</td><td>BiSS-C (not BiSS-B), clock rate, CRC, register map, line termination.</td></tr>'+
+    '<tr><td><b>EnDat 2.2</b></td><td>RS-422, 5 V</td><td>Bidirectional, point-to-point.</td><td>Absolute position plus encoder parameters and safety data.</td><td>EnDat 2.1 vs 2.2, order of clock/data, parameter channel, safety option.</td></tr>'+
+    '<tr><td><b>HIPERFACE</b></td><td>RS-485 parameter channel plus 1 Vpp sin/cos</td><td>Bidirectional, point-to-point.</td><td>Absolute position and motor/encoder data with analogue incremental signals.</td><td>5 V supply, baud rate, sin/cos amplitude and offset, evaluation hardware.</td></tr>'+
+    '<tr><td><b>HIPERFACE DSL</b></td><td>Two-wire digital link</td><td>Bidirectional, point-to-point.</td><td>Single-cable feedback with safety variants.</td><td>Drive-side DSL port, cable length, supply, safety protocol.</td></tr>'+
+    '<tr><td><b>CANopen DS406</b></td><td>CAN transceiver, 24 V supply, 120 Ω termination</td><td>Multi-drop bus.</td><td>Absolute position over PDO/SDO; node address and baud rate.</td><td>Node ID, baud rate, termination, heartbeat, PDO mapping, scaling.</td></tr>'+
+    '<tr><td><b>PROFIBUS / PROFINET / EtherCAT</b></td><td>Fieldbus or Ethernet</td><td>Network.</td><td>Encoder with an integrated network port or an encoder gateway.</td><td>GSD/GSDML/ESI file, cycle time, device profile, network topology.</td></tr>'+
+    '<tr><td><b>Analogue / resolver</b></td><td>0–10 V, 4–20 mA, 1 Vpp sin/cos or resolver</td><td>Direct or via a converter.</td><td>Angle or speed where the drive has the matching evaluation hardware.</td><td>Amplitude, offset, phase, excitation frequency, converter scaling.</td></tr>'+
+    '</tbody></table>'+
+    '<p><b>SSI</b> is the simplest serial absolute link: the drive sends a clock burst and the encoder returns a synchronous data word. It is robust and deterministic, but the drive must know the word length and code. <b>BiSS-C</b> adds bidirectional register access, CRC and daisy-chain capability. <b>EnDat 2.2</b> adds a parameter channel and safety-capable variants. <b>HIPERFACE</b> combines an RS-485 parameter channel with analogue sin/cos signals; <b>HIPERFACE DSL</b> replaces the analogue pair with a two-wire digital link. <b>CANopen DS406</b> puts the encoder on a multi-drop bus, so node ID, baud rate and termination become installation parameters.</p>'+
+    '<p><b>NORD context.</b> The local absolute-encoder overview lists Kübler CANopen DS406 units for SK 2xxE, SK 53xE and SK 54xE, with 13-bit single-turn and 12-bit or 16-bit multi-turn resolution. It lists SSI-Gray units with 13-bit single-turn and 12-bit multi-turn for SK 700E with POSICON and for SK 54xE. Some CANopen variants also provide 2,048 ppr TTL/RS-422 incremental outputs. Those incremental outputs are an additional speed signal, not a substitute for the absolute protocol.</p>'+
+    '<p><b>A connector that fits is not an interface match.</b> TTL and RS-422 are not the same as HTL. A 24 V supply does not imply 24 V signal levels. A 5 V encoder can be destroyed by a 24 V supply, and a 24 V HTL encoder may not drive a 5 V TTL input. Read the encoder data sheet, the drive terminal diagram and the option module manual together.</p>'),
+   card('Resolution, accuracy, repeatability and latency',
+    '<p>These four words are often used as if they were one. They are not. <b>Resolution</b> is the smallest reported increment. <b>Repeatability</b> is how closely repeated moves agree. <b>Accuracy</b> is how close the reported position is to the true position. <b>Latency</b> is how old the reported position is when the control loop uses it. A high-resolution encoder can be inaccurate; a repeatable machine can be systematically offset; a fast interface can still be too late for a high-speed loop.</p>'+
+    '<p class="formula">angle per count = 360° / 2<sup>resolution</sup></p>'+
+    '<p class="formula">counts per unit = (2<sup>resolution</sup> × gear ratio) / travel per output revolution</p>'+
+    '<p class="formula">channel frequency = pulses per revolution × speed [rpm] / 60</p>'+
+    '<p><b>Worked example.</b> A 1,024 ppr incremental encoder with four-edge evaluation gives 4,096 counts per motor revolution. With a 20:1 gearbox and 200 mm of travel per output revolution, the motor encoder gives 4,096 × 20 = 81,920 counts per output revolution, or 409.6 counts per millimetre. The nominal increment is 1 / 409.6 = 0.00244 mm per count. That is an arithmetic increment, not a positioning promise: backlash, belt stretch, coupling wind-up, diameter tolerance and thermal expansion are not in the calculation.</p>'+
+    '<p><b>Error budget.</b> The encoder contributes scale error, interpolation error, nonlinearity, hysteresis, temperature drift and repeatability. The installation contributes coupling eccentricity, shaft load, alignment, vibration and cable strain. The machine contributes backlash, compliance, slip and structural deflection. The control system contributes quantisation, filtering, sampling delay and following-error limits. Improving one item cannot compensate for a dominant error elsewhere.</p>'+
+    '<p><b>Latency matters at speed.</b> A position word that is 1 ms old is already 18° behind at 3,000 rpm (3,000 rpm = 50 rev/s = 18,000°/s). At 1,500 rpm the same 1 ms is 9°. SSI frame time, BiSS/EnDat clock rate, CANopen cycle time, drive filtering and the control-loop period all add delay. For a high-speed spindle or a flying cut, calculate the position lag at the working speed and compare it with the permitted following error. For a slow positioning axis, resolution and repeatability usually matter more than microseconds.</p>'+
+    '<p><b>Resolution versus accuracy.</b> A 23-bit encoder with a badly aligned coupling can be less accurate than a 13-bit encoder mounted correctly. A fine count does not correct a systematic offset, a tilted scale or a loose hub. Ask for the accuracy specification in arcseconds or degrees, the repeatability, the temperature range and the test conditions, not just the bit count.</p>'),
+   card('NORD absolute encoder variants: what the local reference says',
+    '<p>The local absolute-encoder overview is a snapshot of Kübler and Baumer IVO units selected for NORD drives. It is useful because it shows how the same mechanical family can be ordered with different interfaces, resolutions and connector ends. It is not a current price list or a complete product range.</p>'+
+    '<table><thead><tr><th>Variant</th><th>Resolution</th><th>Interface</th><th>Supply / connection</th><th>NORD drive context</th></tr></thead><tbody>'+
+    '<tr><td>Singleturn absolute</td><td>13 bit (8,192)</td><td>CANopen DS406 V3.1</td><td>10–30 V DC · terminal or M12</td><td>SK 2xxE, SK 53xE, SK 54xE</td></tr>'+
+    '<tr><td>Multiturn absolute</td><td>13 bit + 12 bit (4,096 turns)</td><td>CANopen DS406 V3.1</td><td>10–30 V DC · terminal or M12</td><td>SK 2xxE, SK 53xE, SK 54xE</td></tr>'+
+    '<tr><td>Multiturn absolute</td><td>13 bit + 16 bit (65,536 turns)</td><td>CANopen DS406 V3.0</td><td>10–30 V DC · M12</td><td>SK 2xxE</td></tr>'+
+    '<tr><td>Multiturn absolute + incremental</td><td>13 bit + 12 bit · 2,048 ppr</td><td>CANopen DS406 + TTL/RS-422</td><td>10–30 V DC · M12</td><td>SK 2xxE, SK 53xE, SK 54xE</td></tr>'+
+    '<tr><td>Singleturn absolute + incremental</td><td>13 bit · 2,048 ppr</td><td>SSI-Gray + TTL/RS-422</td><td>10–30 V DC · 1.5 m cable</td><td>SK 700E + POSICON, SK 54xE</td></tr>'+
+    '<tr><td>Multiturn absolute + incremental</td><td>13 bit + 12 bit · 2,048 ppr</td><td>SSI-Gray + TTL/RS-422</td><td>10–30 V DC · 1.5 m cable</td><td>SK 700E + POSICON, SK 54xE</td></tr>'+
+    '</tbody></table>'+
+    '<p><b>CANopen defaults in the overview.</b> Address 51 with 125 kbit/s, or address 33 with 250 kbit/s, depending on the variant. Termination is set on the encoder or the bus segment as the manual requires. The supply is 10–30 V DC, the protection class is IP67 or IP66 depending on the housing, and the operating range is typically −40…+80 °C or −30…+75 °C. The incremental output, where fitted, is 2,048 ppr, not the absolute resolution.</p>'+
+    '<p><b>SSI defaults in the overview.</b> SSI-Gray, 13-bit single-turn and 12-bit multi-turn, 10–30 V DC, 1.5 m cable end, IP67, SET input for zero setting. The SSI variants are listed for SK 700E with the POSICON option and for SK 54xE. A PROFIBUS variant in the same overview is explicitly marked “not for NORD drive”, which is a useful reminder that a connector or a protocol name alone does not make a device compatible.</p>'+
+    '<p><b>Ordering logic.</b> Separate the mechanical interface, the sensing principle, the single-turn resolution, the multi-turn resolution, the electrical interface, the connection type and the fieldbus profile. A part number that changes one character can change the output from SSI to CANopen or from 12-bit to 16-bit turns. Use the current NORD selection and the encoder data sheet, not an old e-mail or a photograph of a nameplate.</p>'),
+   card('Every drive family: where an encoder enters',
+    '<p>The table below is a map of the families in the local reference set, not a compatibility certificate. The important distinction is between a <b>base unit with no encoder input</b>, a <b>base unit or option with an incremental input</b>, and a <b>drive with an absolute-encoder option or an integrated absolute interface</b>. The family name alone does not answer the question; the full model code, the option slot, the firmware and the enabled function do.</p>'+
+    '<table><thead><tr><th>Family</th><th>Models</th><th>Incremental</th><th>Absolute</th><th>Option / module</th><th>What the reference says</th></tr></thead><tbody>'+
+    '<tr><td><b>NORDAC START</b></td><td>SK 135E, SK 175E</td><td>—</td><td>—</td><td>—</td><td>Motor starter / V/f; no encoder feedback in the base unit.</td></tr>'+
+    '<tr><td><b>NORDAC BASE</b></td><td>SK 180E, SK 190E</td><td>—</td><td>—</td><td>—</td><td>V/f and sensorless; no encoder input in the base unit.</td></tr>'+
+    '<tr><td><b>NORDAC FLEX</b></td><td>SK 200E, SK 2x5E</td><td>HTL</td><td>CANopen DS406</td><td>SK TIE4-M12-HTL · CANopen option</td><td>Incremental HTL and CANopen absolute in the local reference set. Check TTL and option slot.</td></tr>'+
+    '<tr><td><b>NORDAC LINK</b></td><td>SK 250E-FDS, SK 155E-FDS</td><td>Check</td><td>Check</td><td>Check model code</td><td>Decentralized family; encoder support depends on the variant.</td></tr>'+
+    '<tr><td><b>NORDAC ON</b></td><td>SK 300P, ON+, ON PURE</td><td>—</td><td>—</td><td>—</td><td>Compact V/f; no encoder input in the base unit. Check the variant.</td></tr>'+
+    '<tr><td><b>NORDAC FUSION</b></td><td>motor + inverter</td><td>Check</td><td>Check</td><td>Check model code</td><td>Integrated motor and drive; do not assume an encoder input.</td></tr>'+
+    '<tr><td><b>NORDAC PRO 500E</b></td><td>SK 520E, 530E, 535E, 540E</td><td>TTL / HTL</td><td>SSI · CANopen</td><td>Encoder option · SK 54xE</td><td>Documented for SK 53xE / 54xE; 520E may differ. POSICON for positioning. Option and firmware matter.</td></tr>'+
+    '<tr><td><b>NORDAC PRO 500P</b></td><td>SK 500P, 530P, 550P</td><td>TTL / HTL</td><td>Check SSI / CANopen</td><td>Encoder option</td><td>Local manual p.64 shows TTL inputs and a 10–30 V encoder supply; confirm the absolute option.</td></tr>'+
+    '<tr><td><b>Legacy 700E</b></td><td>SK 700E</td><td>TTL / HTL</td><td>SSI with POS</td><td>SK TU1-ENC · SK TU1-POS</td><td>Incremental speed feedback or POSICON positioning; the option module is required.</td></tr>'+
+    '<tr><td><b>Legacy 1000E</b></td><td>SK 1000E</td><td>Check</td><td>Check</td><td>Check model code</td><td>Large legacy drive; verify the fitted encoder option.</td></tr>'+
+    '</tbody></table>'+
+    '<p><b>How to read the table.</b> “—” means the base unit has no encoder input, not that the family can never be used in a closed loop. “Check” means the local reference set does not contain enough evidence to name the option. NORDAC FLEX and NORDAC PRO have optional feedback paths; the option module is the actual interface, and it must be ordered with the drive or fitted and configured afterwards.</p>'+
+    '<p><b>What to check in the model code.</b> Identify the family, the power size, the variant, the encoder option, the fieldbus option and the firmware. A drive with an encoder connector may still need the function enabled in software. A drive with a fieldbus port may use a CANopen absolute encoder, while another variant uses SSI or incremental TTL. The same terminal strip can be labelled differently across editions.</p>'+
+    '<p><b>What to check in the manual.</b> The encoder supply voltage and current, the signal level (TTL/RS-422 or HTL), the maximum input frequency, the supported resolution, the protocol and word length, the pinout, the cable-length limit, the parameter set for encoder scaling and the positioning or safety functions. If the manual does not state a combination, do not assume it.</p>'),
+   card('Commissioning an absolute encoder',
+    '<p>Commissioning is a sequence, not a single parameter. The order below keeps mechanical, electrical and software errors separate so that a fault can be localized.</p>'+
+    '<p><b>1. Identify.</b> Record the encoder type, interface, single-turn resolution, multi-turn range, supply voltage, output code, connector pinout, maximum speed and protection class. Photograph the label and the connector face. Compare the part number with the drive option and the cable.</p>'+
+    '<p><b>2. Mount.</b> Check the shaft or hollow-shaft fit, the coupling, the flange, the axial and radial load, the tightening torque and the cable bend radius. A coupling that is misaligned or preloaded can destroy the encoder bearing or produce a periodic position error. Keep the encoder within its temperature and vibration limits.</p>'+
+    '<p><b>3. Wire.</b> Verify supply polarity and voltage before connecting. Use twisted pairs for clock/data, keep the encoder cable separated from the motor cable, bond the shield to the connector shell or the drive PE bar as the EMC guide requires, and terminate the bus or the differential pair as specified. Do not hot-plug the encoder connector.</p>'+
+    '<p><b>4. Configure.</b> Set the interface, protocol, node ID, baud rate, termination, word length, code, direction, resolution, gear ratio, scaling, modulo range and preset. For CANopen, confirm the PDO mapping, heartbeat and bus timing. For SSI, confirm clock polarity, data valid, Gray/binary and bit width. For EnDat/BiSS/HIPERFACE, confirm that the drive option supports the exact protocol variant and firmware.</p>'+
+    '<p><b>5. Reference.</b> Establish the machine datum. A commissioned absolute system can resume without a search move, but the datum and offset must be valid and stored. After a coupling change, an encoder replacement or a multiturn overflow, re-establish the reference. Document the offset and the procedure for restoring it.</p>'+
+    '<p><b>6. Verify.</b> Move in both directions at low speed and compare commanded position with actual position. Check the sign, the following error, the position window, the repeatability at the same target, the limit switches and the brake. Move the load by hand while powered and observe that the position changes in the expected direction. At the working speed, check that the interface update rate and the control-loop period are adequate.</p>'+
+    '<p><b>7. Record.</b> Store the encoder type, serial number, resolution, interface, node ID, baud rate, offset, scaling, gear ratio, cable length, shield arrangement and replacement procedure in the machine file. A replacement encoder of the same type may still need the offset and datum re-established.</p>'),
+   card('Troubleshooting absolute feedback',
+    '<p>Start with the physical layer. Most “encoder faults” are supply, wiring, termination, configuration or mechanical problems. A scope or an encoder tester is more informative than repeatedly changing parameters.</p>'+
+    '<table><thead><tr><th>Symptom</th><th>Likely cause</th><th>Check</th></tr></thead><tbody>'+
+    '<tr><td>No position word / SSI timeout</td><td>No clock, swapped clock/data, wrong bit width, broken pair, unpowered encoder</td><td>Supply voltage, clock at the encoder, data at the drive, differential pair continuity, word length, termination.</td></tr>'+
+    '<tr><td>Position jumps or is noisy</td><td>Shield not bonded, ground loop, cable routed with motor power, loose connector, damaged encoder</td><td>Shield-to-shell continuity, cable route, connector pins, signal quality, substitution with a short test cable.</td></tr>'+
+    '<tr><td>Direction is reversed</td><td>Encoder mounting side, A/B swap, sign parameter, inverted scaling</td><td>Rotate the shaft by hand and observe the sign; check the parameter and the mechanical orientation.</td></tr>'+
+    '<tr><td>Position changes after power-off</td><td>Singleturn encoder, battery exhausted, multiturn overflow, shaft moved while unpowered</td><td>Encoder type, battery status, turn range, power-off movement, reference procedure.</td></tr>'+
+    '<tr><td>Slow drift or offset</td><td>Coupling slip, backlash, wrong gear ratio, wrong scale, thermal expansion</td><td>Mark the shaft and coupling, compare commanded and actual travel, verify the ratio and the scaling.</td></tr>'+
+    '<tr><td>CANopen bus-off</td><td>Wrong baud rate, duplicate node ID, missing termination, wiring stub, heartbeat timeout</td><td>Bus resistance with power off, node IDs, baud rate, termination, cable length, heartbeat configuration.</td></tr>'+
+    '<tr><td>Position is valid but wrong at a boundary</td><td>Gray decoded as binary, wrong bit order, wrong word length, turn count included incorrectly</td><td>Compare the raw word with the decoded value; verify the code, bit width and mapping.</td></tr>'+
+    '<tr><td>Encoder overheats</td><td>Speed above limit, coupling preload, ambient temperature, wrong housing</td><td>Maximum speed, mounting, axial/radial load, ambient and housing temperature.</td></tr>'+
+    '</tbody></table>'+
+    '<p><b>Do not hot-plug.</b> Connecting or disconnecting an encoder while the drive is powered can expose the receiver to a transient, destroy the encoder output stage or corrupt the bus. Isolate, wait for the DC link to discharge and prove dead before changing a connector.</p>'),
+   card('Safety encoders and functional safety',
+    '<p>An absolute encoder is not automatically a safety encoder. Functional safety requires a certified or assessed encoder, a safety-capable interface, a safety function in the drive or controller, and validated wiring and diagnostics. The encoder is one element in a safety chain, not the whole chain.</p>'+
+    '<p><b>Common safety architectures.</b> Redundant scanning with two independent position channels; sin/cos signals with plausibility monitoring; EnDat 2.2 safety variants; HIPERFACE DSL safety variants; safe fieldbus protocols such as FSoE or PROFIsafe; and safe speed or safe position functions in the drive. The safety manual states the achievable SIL or PL, the proof test, the diagnostic coverage and the permitted wiring.</p>'+
+    '<p><b>What to verify.</b> The safety function (STO, SS1, SLS, SDI, safe position), the required SIL/PL, the encoder certificate, the interface certificate, the drive safety option, the wiring diagram, the discrepancy time, the test procedure and the validation record. A standard encoder connected to a standard input does not become safety-rated because the drive has an STO terminal.</p>'+
+    '<p><b>Diagnostics.</b> Safety encoders can report internal errors, signal amplitude, position discrepancy, temperature and communication status. The drive or safety controller must react to those diagnostics within the specified reaction time. A diagnostic that is displayed but not evaluated is not a safety function.</p>'+
+    '<p><b>Commissioning and proof test.</b> Verify the safe speed and position limits, the stop category, the brake test, the guard monitoring and the restart interlock. Record the test results and the next proof-test date. After an encoder replacement or a firmware change, repeat the validation.</p>'),
+   card('Cable and connector rules for absolute encoders',
+    '<p>An absolute encoder cable carries at least supply, 0 V and one or two data pairs; some variants add a battery, SET input, incremental A/B/Z or a second channel. The cable is part of the interface, not an accessory.</p>'+
+    '<p><b>Pairs and shield.</b> Use twisted pairs for clock/data and for supply/0 V where the encoder specifies it. Bond the shield at the connector shell and at the drive PE bar according to the EMC guide; avoid a long pigtail. Keep the encoder cable away from motor cables and other high-current switching conductors. A shield that is connected only at one end can still reduce electric-field coupling, but it is not a universal solution; follow the drive manual.</p>'+
+    '<p><b>Supply.</b> Check the encoder supply range (often 10–30 V DC, sometimes 5 V), the current consumption and the voltage drop at the end of a long cable. A 24 V supply at the drive can be below the encoder minimum at the far end under load. Use a separate fused supply or the drive encoder supply as specified, and verify polarity before connecting.</p>'+
+    '<p><b>Termination.</b> RS-422/RS-485 links need the correct termination and common-mode arrangement. CANopen needs 120 Ω at both ends of the bus, not at every node. SSI clock/data pairs may need termination at the receiver. A missing or extra termination can produce intermittent position words that look like an encoder fault.</p>'+
+    '<p><b>Connector families.</b> M12 A-coded is common for incremental and absolute encoders; M12 B-coded is used for fieldbus; M23 and larger circular connectors appear on servo and heavy-duty encoders. The NORD M12 examples show the difference: an incremental IG connection uses +24 V, 0 V, A, B and optionally Z, while an absolute AG connection uses +24 V, 0 V, SYS H and SYS L with the shield on pin 1. The pin numbers are not interchangeable between the two.</p>'+
+    '<p><b>Length.</b> TTL/RS-422 links are more sensitive to capacitance and length than HTL. SSI cable length depends on clock frequency and cable capacitance; CANopen depends on baud rate, stub length and termination. Do not promise a length because a catalogue lists a maximum; calculate it for the actual clock rate, cable and environment.</p>'),
+   card('Choosing an encoder by motor and application',
+    '<p>The right encoder depends on what the control loop must know, where the measurement is made and what the environment allows. The table is a starting point, not a selection rule.</p>'+
+    '<table><thead><tr><th>Motor / application</th><th>Feedback need</th><th>Typical choice</th><th>Why</th></tr></thead><tbody>'+
+    '<tr><td>Induction motor, V/f fan or pump</td><td>No closed-loop speed or position</td><td>None, or a simple incremental encoder for indication</td><td>V/f does not require shaft feedback; an encoder adds cost and wiring without improving the process.</td></tr>'+
+    '<tr><td>Induction motor, vector control</td><td>Speed regulation, torque at low speed</td><td>Incremental HTL or TTL/RS-422, or absolute for positioning</td><td>Vector control benefits from speed feedback; absolute feedback adds position and restart capability.</td></tr>'+
+    '<tr><td>PMSM servo</td><td>Rotor angle for commutation plus position</td><td>Absolute multiturn: EnDat, HIPERFACE, BiSS, SSI or CANopen</td><td>The drive needs an absolute rotor angle at power-up and a position reference for the axis.</td></tr>'+
+    '<tr><td>Synchronous reluctance</td><td>Rotor angle and speed</td><td>Absolute or incremental with a homing strategy</td><td>The control needs a rotor angle; the restart strategy decides whether absolute is worth the cost.</td></tr>'+
+    '<tr><td>Linear motor</td><td>Linear position over the stroke</td><td>Linear absolute encoder: EnDat, BiSS, SSI or a suitable fieldbus</td><td>A rotary encoder on the motor does not measure the actual linear load position.</td></tr>'+
+    '<tr><td>High-speed spindle</td><td>Speed and phase at high frequency</td><td>Incremental TTL/RS-422 with low latency, or a fast absolute interface</td><td>Bandwidth and latency matter more than multiturn range; check the maximum input frequency.</td></tr>'+
+    '<tr><td>Gearmotor positioning</td><td>Output position, turn count, restart</td><td>Multiturn absolute, with the gear ratio and modulo range configured</td><td>The turn counter and the absolute word avoid a reference move; the gear ratio maps motor turns to load position.</td></tr>'+
+    '<tr><td>Hazardous area</td><td>Certified feedback for the zone</td><td>Certified encoder and cable, plus the required safety function</td><td>The enclosure, cable and circuit must meet the hazardous-area certification, not just the encoder.</td></tr>'+
+    '<tr><td>Washdown or food area</td><td>Reliable position with cleaning</td><td>IP67/IP69K stainless or food-grade housing, sealed cable</td><td>Chemical compatibility and cleaning temperature matter as much as resolution.</td></tr>'+
+    '<tr><td>Long cable run</td><td>Robust transmission</td><td>HTL, RS-485 or a lower clock rate; repeater or gateway if needed</td><td>TTL/RS-422 is less forgiving of capacitance and noise over long distances.</td></tr>'+
+    '</tbody></table>'+
+    '<p><b>Motor side or load side.</b> A motor-side encoder observes the motor shaft, so it sees gearbox backlash, belt slip and coupling wind-up as a difference between motor position and load position. A load-side encoder measures the actual output, but it may be exposed to the process, harder to mount and limited in speed. Some machines use both: motor feedback for commutation and speed, load feedback for final position. The control architecture must support the second loop.</p>'+
+    '<p><b>Absolute or incremental.</b> Choose absolute when restart position, turn count or commutation angle matters, or when a reference move is expensive. Choose incremental when the machine homes reliably, the cable run is short, the speed is high and the budget is tight. A well-designed incremental system with a repeatable homing strategy can be more accurate than an absolute system with a bad coupling.</p>'),
  ],
- sources:'Internal NORD references: Overview NORD cables (power, hybrid and signal families, connector ends and material numbers); Wiring power HAN Q5 Power IN; Wiring power HAN Q8 Motor; M12 control-connector template (incremental IG and absolute AG pinouts); encoder selection and absolute-encoder overview. Pinouts and colours are representative examples; verify the device manual and the cable data sheet before wiring.'
+ sources:'Internal NORD references: Overview NORD cables (power, hybrid and signal families, connector ends and material numbers); Wiring power HAN Q5 Power IN; Wiring power HAN Q8 Motor; M12 control-connector template (incremental IG and absolute AG pinouts); encoder selection and absolute-encoder overview; NORD encoder training deck, session 3 (encoder types, interfaces and position control); NORDAC PRO SK 500E / SK 500P manual encoder sections. Absolute-encoder resolutions and drive-family rows are a snapshot of the local reference set: verify the full model code, option slot, firmware and encoder data sheet before selection. Pinouts and colours are representative examples; verify the device manual and the cable data sheet before wiring.'
 });
 if(Array.isArray(related[19])&&!related[19].includes(44))related[19].push(44);
 if(Array.isArray(related[14])&&!related[14].includes(44))related[14].push(44);

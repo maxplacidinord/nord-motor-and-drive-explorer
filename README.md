@@ -5,7 +5,7 @@ motor physics, encoder and tuning behaviour, functional safety, communications, 
 **cables and connectors**.
 
 Open `NORD-motor-and-drive-explorer.html` in any modern browser. No build step, no server, no dependencies.
-Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file (about 1.75 MB).
+Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file (about 1.8 MB).
 
 ## The motor failure chapter
 
@@ -56,21 +56,30 @@ NORD-motor-and-drive-explorer.html#wiring
 
 The simplified layout also shows **Wiring & cables** as a top-level tab in the topic bar, so the chapter is
 reachable without opening the Chapters menu. The home journey has a direct **Wiring and cables** button.
-Inside the chapter, use the **Section** selector to move between five views:
+Inside the chapter, use the **Section** selector to move between seven views:
 
 - **Connection chain** — separate versus hybrid routes from drive to motor, with power, brake, thermistor
-  and encoder circuits.
+  and encoder circuits, plus moving signal-flow markers when the transport runs.
 - **Motor cable** — a cross-section with U/V/W/PE, brake and thermistor pairs, overall shield, and a
   shield-termination comparison.
 - **Encoder cable** — incremental A/B/Z and complementary tracks versus an absolute position word, with
   resolution and homing readouts.
+- **Absolute encoders** — an animated code disc and fixed read head, live single-turn and multi-turn words,
+  Gray/binary selection, 13–23-bit resolution, 12/16-bit turn counters, and protocol frames for SSI, BiSS-C,
+  EnDat 2.2, HIPERFACE and CANopen DS406.
 - **Connector pinout** — representative M12 and HAN faces and pin maps, including HAN Q5 power in and
   HAN Q8 motor.
 - **Cable selection** — power, hybrid and signal families mapped to common applications and connector ends.
+- **Drive interfaces** — a family-by-family matrix for NORDAC START, BASE, FLEX, LINK, ON (including ON
+  PURE), FUSION, PRO 500E, PRO 500P, legacy 700E and 1000E, with incremental and absolute paths marked as
+  documented or “check model code”.
 
-Six reference cards cover the connection chain, motor-cable construction, incremental versus absolute
-encoders, connector families, subtle cable variants and pre-power wiring checks. Five inline figures
-accompany the prose.
+Sixteen reference cards cover the connection chain, motor-cable construction, incremental versus absolute
+encoders, the absolute position word, every major serial and network interface, resolution versus accuracy
+and latency, NORD absolute-encoder variants, the drive-family matrix, commissioning, troubleshooting,
+safety encoders, cable and connector rules, motor/application selection, connector families, subtle cable
+variants and pre-power wiring checks. Seven inline figures accompany the prose, and the absolute-encoder
+view has a play/scrub transport.
 
 Pinouts and colours are representative examples from NORD internal wiring documents. They are teaching
 aids, not an installation instruction; verify the device label, the cable data sheet and the manual before
