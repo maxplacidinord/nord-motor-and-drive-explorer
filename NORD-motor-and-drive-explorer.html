@@ -9051,35 +9051,40 @@ const mfPhotos={burnt:'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAA
 const mfFamilies=[
  {id:'bearing',label:'Bearings',share:'40–50 %',mid:45,colour:C[0],
   stress:'Mechanical + electrical',rate:3.2,vib:.9,heat:16,cur:.10,
-  code:'F07 · BEARING',trip:'bearing over-temperature',sigLabel:'BPFO + harmonics',
+  code:'F07 · BEARING',trip:'bearing over-temperature',sigLabel:'BPFO + harmonics',dom:2,
+  sigWhy:'Energy at BPFO and its harmonics; 1× and 2× stay low until the bearing seizes.',
   why:'Fatigue, contamination, lubrication and shaft currents. The bearing is usually the victim, not the cause.',
   tell:'BPFO/BPFI peaks with sidebands, fluting, black or hardened grease.',
   test:'Vibration with envelope demodulation, grease condition, shaft voltage.',
   fix:'Alignment, correct grease and quantity, insulated bearings or a grounding ring.'},
  {id:'stator',label:'Stator',share:'30–40 %',mid:35,colour:C[1],
   stress:'Thermal + electrical',rate:2.6,vib:.25,heat:55,cur:.30,
-  code:'F11 · INSULATION',trip:'earth fault',sigLabel:'PD + negative sequence',
+  code:'F11 · INSULATION',trip:'earth fault',sigLabel:'PD + negative sequence',dom:4,
+  sigWhy:'Partial discharge lifts the noise floor; negative-sequence current shows at 2× line.',
   why:'Thermal ageing, partial discharge, contamination and inverter overvoltage. Damage location tells you which.',
   tell:'IR or PI falling, surge imbalance, tracking at terminals, ozone smell.',
   test:'IR/PI, winding resistance balance, surge comparison, partial discharge.',
   fix:'Cooling and thermal margin, correct IP, dv/dt or sine filter, VPI quality.'},
  {id:'rotor',label:'Rotor',share:'5–10 %',mid:8,colour:C[2],
   stress:'Thermal + mechanical',rate:2.9,vib:.5,heat:28,cur:.55,
-  code:'F23 · ROTOR',trip:'negative-sequence overcurrent',sigLabel:'f(1 ± 2s) sidebands',
+  code:'F23 · ROTOR',trip:'negative-sequence overcurrent',sigLabel:'f(1 ± 2s) sidebands',dom:3,
+  sigWhy:'Sidebands at f(1 ± 2s) around line frequency; the spacing grows with load.',
   why:'Bar and end-ring fatigue from thermal cycling, plus eccentricity and magnet problems.',
   tell:'Torque pulsation, current sidebands at f(1 ± 2s), starting current asymmetry.',
   test:'MCSA under steady load, rotor resistance, growler or visual inspection.',
   fix:'Reduce starts or start with a drive, balance the supply, correct thermal capacity.'},
  {id:'mechanical',label:'Shaft',share:'2–5 %',mid:4,colour:G,
   stress:'Mechanical',rate:3.4,vib:1.2,heat:10,cur:.12,
-  code:'F31 · ALIGNMENT',trip:'vibration shutdown',sigLabel:'1× and 2× running speed',
+  code:'F31 · ALIGNMENT',trip:'vibration shutdown',sigLabel:'1× and 2× running speed',dom:1,
+  sigWhy:'1× from unbalance, 2× from misalignment; axial phase separates the two.',
   why:'Misalignment, unbalance, resonance, overhung load and torsional oscillation end up in the shaft and bearings.',
   tell:'2× running speed, axial vibration, coupling wear, runout change.',
   test:'Vibration phase, laser alignment, dial indicator, bump test.',
   fix:'Alignment to tolerance, soft-foot correction, correct coupling and belt tension.'},
  {id:'application',label:'Application',share:'5–15 %',mid:8,colour:'#d8c98d',
   stress:'Environmental + electrical',rate:1.9,vib:.2,heat:62,cur:.18,
-  code:'F41 · COOLING',trip:'winding over-temperature',sigLabel:'temperature trend',
+  code:'F41 · COOLING',trip:'winding over-temperature',sigLabel:'temperature trend',dom:-1,
+  sigWhy:'No mechanical signature: the temperature trend is the evidence, with 2× line from supply unbalance.',
   why:'Blocked cooling, moisture, chemicals, voltage unbalance, harmonics and wrong protection settings.',
   tell:'Hot at low load, condensation, low IR after a stop, nuisance trips.',
   test:'Thermal imaging, airflow check, power-quality log, protection test.',
@@ -9164,23 +9169,69 @@ function mfUpdate(sim,dt){
  if(!r||!r.motor)return;
  const amp=.18+f.vib*Math.pow(d,1.35);
  const temp=45+45+f.heat*d;
- const wobble=f.id==='rotor'?2.2*d:0;
- const dx=amp*2.4*Math.sin(sim.t*2*Math.PI*2.1);
- const dy=amp*1.5*Math.sin(sim.t*2*Math.PI*2.1+1.1)+wobble*Math.sin(sim.t*11);
+ /* each mechanism shakes differently: bearing = fast rattle, mechanical = slow
+    orbital wobble, rotor = 2x speed envelope, stator/application = almost still */
+ const A=amp*2.2;
+ let dx=0,dy=0;
+ if(f.id==='mechanical'){
+  dx=A*1.50*Math.sin(sim.t*2*Math.PI*1.7);
+  dy=A*1.15*Math.sin(sim.t*2*Math.PI*1.7+Math.PI/2);
+ }else if(f.id==='bearing'){
+  dx=A*.85*Math.sin(sim.t*2*Math.PI*6.4);
+  dy=A*.55*Math.sin(sim.t*2*Math.PI*6.4+1.0);
+ }else if(f.id==='rotor'){
+  const env=.55+.45*Math.sin(sim.t*2*Math.PI*2.2);
+  dx=A*.75*Math.sin(sim.t*2*Math.PI*7.5)*env;
+  dy=A*.50*Math.sin(sim.t*2*Math.PI*5.2+1.0)*env;
+ }else if(f.id==='stator'){
+  dx=A*.22*Math.sin(sim.t*2*Math.PI*1.2);
+  dy=A*.18*Math.sin(sim.t*2*Math.PI*1.2+.7);
+ }else{
+  dx=A*.12*Math.sin(sim.t*2*Math.PI*.7);
+  dy=A*.09*Math.sin(sim.t*2*Math.PI*.7+.5);
+ }
  r.motor.setAttribute('transform','translate('+dx.toFixed(2)+' '+dy.toFixed(2)+')');
- const ex=f.id==='mechanical'?d*7:0;
- sim.rot=(sim.rot+360*(sim.running?1:sim.spin)*dt*(1+wobble*.02*Math.sin(sim.t*13)))%360;
+ const ex=f.id==='mechanical'?d*8:0;
+ const speedPulse=f.id==='rotor'?1+.30*d*Math.sin(sim.t*2*Math.PI*2.2):f.id==='mechanical'?1+.06*d*Math.sin(sim.t*2*Math.PI*1.7):1;
+ sim.rot=(sim.rot+360*(sim.running?1:sim.spin)*dt*speedPulse)%360;
  r.rotor.setAttribute('transform','translate('+ex.toFixed(2)+' '+(ex*.4).toFixed(2)+') rotate('+sim.rot.toFixed(1)+' '+MF_MX+' '+MF_MY+')');
  if(r.fan){
   sim.fan=(sim.fan||0)+360*dt*(f.id==='application'?(1-d):1);
   r.fan.setAttribute('transform','rotate('+sim.fan.toFixed(1)+' 150 390)');
  }
- r.glow.setAttribute('opacity',Math.max(0,(temp-80)/80*.55).toFixed(2));
- r.spall.setAttribute('stroke-dasharray',(36*d).toFixed(1)+' 300');
- r.crack.setAttribute('stroke-dasharray',(62*d).toFixed(1)+' 200');
+ /* heat is localised: bearing runs hot at the bearing, winding faults glow broadly */
+ const thermal=f.id==='bearing'||f.id==='mechanical'?0:Math.max(0,(temp-80)/80*.55);
+ r.glow.setAttribute('opacity',thermal.toFixed(2));
+ if(r.bearingHeat)r.bearingHeat.setAttribute('opacity',f.id==='bearing'?Math.max(0,(temp-70)/60*.85).toFixed(2):'0');
+ r.spall.setAttribute('stroke-dasharray',(f.id==='bearing'?36*d:0).toFixed(1)+' 300');
+ r.crack.setAttribute('stroke-dasharray',(f.id==='rotor'?62*d:0).toFixed(1)+' 200');
  r.arc.setAttribute('opacity',(f.id==='stator'&&d>.3)?(Math.random()>.45?'.95':'.12'):'0');
+ if(r.impact)r.impact.forEach((c,i)=>{
+  const p=((sim.t*3.4+i*.5)%1+1)%1;
+  c.setAttribute('r',(50+34*p).toFixed(1));
+  c.setAttribute('opacity',(f.id==='bearing'&&!sim.tripped)?((1-p)*.75*d).toFixed(2):'0');
+ });
+ if(r.coils)r.coils.forEach((c,i)=>{
+  if(f.id==='stator'&&i>=17&&i<=21){
+   c.setAttribute('fill','#5a3327');
+   c.setAttribute('opacity',(0.35+0.65*d).toFixed(2));
+  }
+ });
+ if(r.bars)r.bars.forEach((b,i)=>{
+  if(f.id==='rotor'&&i===2)b.setAttribute('fill',d>.12?'#ff9d5c':'#59718a');
+ });
+ if(r.orbit){
+  const on=f.id==='mechanical';
+  r.orbit.setAttribute('opacity',on?(0.25+0.7*d).toFixed(2):'0');
+  if(on){
+   const ang=sim.t*2*Math.PI*1.7,rad=16+9*d;
+   r.orbitDot.setAttribute('cx',(MF_MX+rad*Math.cos(ang)).toFixed(1));
+   r.orbitDot.setAttribute('cy',(MF_MY+rad*Math.sin(ang)).toFixed(1));
+  }
+ }
+ const smokeOn=f.id==='stator'||f.id==='application';
  for(let i=0;i<r.smoke.length;i++){
-  const c=r.smoke[i],k=Math.max(0,(temp-95)/50);
+  const c=r.smoke[i],k=smokeOn?Math.max(0,(temp-95)/50):0;
   c.setAttribute('opacity',(k*.55).toFixed(2));
   c.setAttribute('cy',(MF_MY-145-i*13-(sim.t*26+i*9)%44).toFixed(1));
  }
@@ -9223,13 +9274,14 @@ function mfUpdate(sim,dt){
 }
 function mfDraw(){
  mfStop();
+ const playBtn=$('mf-play');if(playBtn)playBtn.textContent='Pause';
  const fam=mfFamily();
  const start=Math.max(0,Math.min(95,Number(settings.mfStartDamage)||0));
  const sim={fam,damage:start,t:0,rot:0,spin:1,running:true,tripped:false,raf:0,last:0,refs:{},vib:[],cur:[],tmp:[],fan:0};
  mfSim=sim;
- maFrame(840);
+ maFrame(860);
  const mx=450,my=285;
- e('rect',{x:20,y:12,width:1060,height:816,rx:20,fill:'#0d1927',stroke:'#24384d'});
+ e('rect',{x:20,y:12,width:1060,height:836,rx:20,fill:'#0d1927',stroke:'#24384d'});
  tx(42,46,'Where motors fail',L,23);
  tx(42,70,'Pick a family and watch the mechanism run: evidence, traces and the protection trip in one view.',M,12.5);
  tx(1058,46,fam.label,L,17,'','end');
@@ -9262,10 +9314,11 @@ function mfDraw(){
  const motor=e('g',{});
  sim.refs.motor=motor;
  e('circle',{cx:mx,cy:my,r:145,fill:'#16283a',stroke:'#3d5872','stroke-width':3},undefined,motor);
+ sim.refs.coils=[];
  for(let i=0;i<24;i++){
   const g=e('g',{transform:'rotate('+(i*15)+' '+mx+' '+my+')'},undefined,motor);
   e('rect',{x:mx-8,y:my-145,width:16,height:35,rx:3,fill:'#0f1b29',stroke:'#2b4157'},undefined,g);
-  e('rect',{x:mx-6,y:my-141,width:12,height:26,rx:6,fill:['#5bd9ff','#ffc475','#c5a1ff'][i%3],opacity:.82},undefined,g);
+  sim.refs.coils.push(e('rect',{x:mx-6,y:my-141,width:12,height:26,rx:6,fill:['#5bd9ff','#ffc475','#c5a1ff'][i%3],opacity:.82},undefined,g));
  }
  e('circle',{cx:mx,cy:my,r:100,fill:'#0d1927',stroke:'#3d5872','stroke-width':2},undefined,motor);
  e('rect',{x:mx-48,y:my-195,width:96,height:29,rx:5,fill:'#122132',stroke:'#3d5771'},undefined,motor);
@@ -9275,22 +9328,29 @@ function mfDraw(){
  const rg=e('g',{},undefined,motor);
  sim.refs.rotor=rg;
  e('circle',{cx:mx,cy:my,r:96,fill:'#16283a',stroke:'#3d5872','stroke-width':2},undefined,rg);
+ sim.refs.bars=[];
  for(let i=0;i<18;i++){
   const g=e('g',{transform:'rotate('+(i*20)+' '+mx+' '+my+')'},undefined,rg);
-  e('rect',{x:mx-3,y:my-92,width:6,height:60,rx:2,fill:'#59718a'},undefined,g);
+  sim.refs.bars.push(e('rect',{x:mx-3,y:my-92,width:6,height:60,rx:2,fill:'#59718a'},undefined,g));
  }
  e('circle',{cx:mx,cy:my,r:33,fill:'#0f1b29',stroke:'#5d7892','stroke-width':2},undefined,rg);
  e('circle',{cx:mx,cy:my,r:20,fill:'#22374d',stroke:'#5d7892','stroke-width':2},undefined,rg);
  e('rect',{x:mx+22,y:my-5,width:14,height:10,rx:2,fill:L},undefined,rg);
  e('circle',{cx:mx,cy:my,r:50,fill:'none',stroke:'#5d7892','stroke-width':2,'stroke-dasharray':'7 5'},undefined,motor);
+ sim.refs.bearingHeat=e('circle',{cx:mx,cy:my,r:46,fill:'#ff5a3c',opacity:0},undefined,motor);
  const a1=120*Math.PI/180,a2=156*Math.PI/180;
  sim.refs.spall=e('path',{d:'M'+(mx+50*Math.cos(a1))+' '+(my+50*Math.sin(a1))+' A50 50 0 0 1 '+(mx+50*Math.cos(a2))+' '+(my+50*Math.sin(a2)),stroke:'#ff8a5c','stroke-width':6,fill:'none','stroke-linecap':'round','stroke-dasharray':'0 300'},undefined,motor);
+ sim.refs.impact=[];
+ for(let i=0;i<2;i++)sim.refs.impact.push(e('circle',{cx:mx,cy:my,r:50,fill:'none',stroke:'#ff8a5c','stroke-width':2,opacity:0},undefined,motor));
  const ca=35*Math.PI/180;
  sim.refs.crack=e('line',{x1:mx+34*Math.cos(ca),y1:my+34*Math.sin(ca),x2:mx+94*Math.cos(ca),y2:my+94*Math.sin(ca),stroke:'#ff8a5c','stroke-width':3.5,'stroke-linecap':'round','stroke-dasharray':'0 200'},undefined,motor);
  const aa=-70*Math.PI/180,ax=mx+128*Math.cos(aa),ay=my+128*Math.sin(aa);
  sim.refs.arc=e('path',{d:'M'+ax+' '+(ay-13)+' L'+(ax+5)+' '+(ay-4)+' L'+(ax+14)+' '+ay+' L'+(ax+5)+' '+(ay+4)+' L'+ax+' '+(ay+13)+' L'+(ax-5)+' '+(ay+4)+' L'+(ax-14)+' '+ay+' L'+(ax-5)+' '+(ay-4)+' Z',fill:'#ffe58a',opacity:0},undefined,motor);
  sim.refs.smoke=[];
  for(let i=0;i<4;i++)sim.refs.smoke.push(e('circle',{cx:mx-27+i*18,cy:my-145-i*13,r:10+i*3,fill:'#9fb0c7',opacity:0}));
+ sim.refs.orbit=e('g',{opacity:0},undefined,motor);
+ e('circle',{cx:mx,cy:my,r:22,fill:'none',stroke:L,'stroke-width':1.1,'stroke-dasharray':'3 4'},undefined,sim.refs.orbit);
+ sim.refs.orbitDot=e('circle',{cx:mx+16,cy:my,r:4,fill:L},undefined,sim.refs.orbit);
 
  /* clickable hotspots */
  const hit=(shape,id)=>{const g=e('g',{});g.style.cursor='pointer';g.setAttribute('role','button');g.setAttribute('tabindex','0');e(shape.tag,shape.a,undefined,g);g.onclick=()=>mfChoose(id);g.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();mfChoose(id);}};};
@@ -9320,9 +9380,19 @@ function mfDraw(){
  tx(640,322,'SPECTRUM SIGNATURE',M,9.5);
  sim.refs.sig=[];
  const sigCols=[C[0],C[0],C[1],C[2],'#ff9d7a'];
+ const sigHelp=[
+  '1× — once per revolution: unbalance, eccentricity, a loose rotor.',
+  '2× — twice per revolution: misalignment, coupling geometry, soft foot.',
+  'BPFO — ball-pass frequency of the outer race, with harmonics: a race defect.',
+  'f(1 ± 2s) — current sidebands around supply frequency: rotor bar or eccentricity.',
+  '2fl — twice line frequency: negative-sequence current, static eccentricity.'
+ ];
  ['1×','2×','BPFO','f±2s','2fl'].forEach((label,i)=>{
-  sim.refs.sig.push(e('rect',{x:646+i*40,y:394,width:26,height:2,rx:3,fill:sigCols[i]}));
-  e('text',{x:659+i*40,y:412,fill:M,style:'fill:'+M+';font-size:9.5px','text-anchor':'middle'},label);
+  const col=i===fam.dom?L:M;
+  const bar=e('rect',{x:646+i*40,y:394,width:26,height:2,rx:3,fill:sigCols[i],stroke:i===fam.dom?L:'none','stroke-width':1.3});
+  e('title',{},sigHelp[i],bar);
+  sim.refs.sig.push(bar);
+  e('text',{x:659+i*40,y:412,fill:col,style:'fill:'+col+';font-size:9.5px','text-anchor':'middle'},label);
  });
  sim.refs.tripBadge=e('g',{opacity:0});
  e('rect',{x:640,y:414,width:400,height:20,rx:5,fill:'#3a1620',stroke:'#ff6f52'},undefined,sim.refs.tripBadge);
@@ -9330,7 +9400,7 @@ function mfDraw(){
 
  /* evidence strip */
  e('rect',{x:40,y:492,width:1020,height:110,rx:14,fill:'#101c2b',stroke:'#2b4056'});
- mfWrap(fam.why,92).slice(0,2).forEach((line,i)=>tx(60,516+i*17,line,'#dbe6ef',12));
+ mfWrap(fam.why,100).slice(0,2).forEach((line,i)=>tx(60,516+i*18,line,'#dbe6ef',12));
  const cols=[['STRESS',fam.stress,60],['FIRST TEST',fam.test,370],['PREVENT',fam.fix,720]];
  cols.forEach(([head,body,x])=>{
   tx(x,552,head,L,10);
@@ -9354,8 +9424,8 @@ function mfDraw(){
   if(p.key==='cur'){sim.refs.curPath=path;sim.refs.curBox={x:bx,y:by,w:bw,h:bh};}
   if(p.key==='tmp'){sim.refs.tmpPath=path;sim.refs.tmpBox={x:bx,y:by,w:bw,h:bh};}
  });
- sim.refs.timeText=tx(1058,800,'0.0 s',M,9.5,'','end');
- tx(40,800,'Rolling 2.5 s window · time compressed · teaching model',M,9.5);
+ sim.refs.timeText=tx(1058,838,'0.0 s',M,9.5,'','end');
+ tx(40,838,'Spectrum: '+fam.sigWhy,'#a9bccd',10);
 
  metrics([
   ['Share of failures',fam.share],
@@ -9404,7 +9474,8 @@ maRegister(43,{
  draw:mfDraw,
  details:[
   card('The five families at a glance','<p><strong>Bearings (40–50 %)</strong> — fatigue, contamination, lubrication and shaft currents. <strong>Stator winding and insulation (30–40 %)</strong> — thermal ageing, partial discharge, contamination and inverter overvoltage. <strong>Rotor (5–10 %)</strong> — bar and end-ring fatigue, eccentricity, magnets. <strong>Shaft and coupling (2–5 %)</strong> — misalignment, unbalance, resonance, overhung load. <strong>Application and environment (5–15 %)</strong> — cooling, moisture, supply quality and protection settings.</p><p>The ranges overlap because a bearing that fails from shaft current is an electrical failure, and a winding that fails from blocked cooling is a maintenance failure. Component statistics describe where the damage ended.</p>'),
-  card('Reading the stage','<p>The cabinet is the drive; the circle is the motor seen from the shaft end. The rotor turns, the frame shakes with the fault, and the glow is the winding hot spot. The right-hand panel shows accumulated damage, estimated time to trip, the protection code and the five spectrum positions where the fault appears.</p><p>The traces are a rolling window: vibration in mm/s, motor current in A, winding temperature in °C. On a real machine vibration and current would be sampled at kilohertz; here they are shaped by the damage level so the pattern is visible.</p>'),
+  card('Reading the stage','<p>The cabinet is the drive; the circle is the motor seen from the shaft end. Each family moves differently on purpose: a bearing fault rattles fast with impact rings at the bearing; a stator fault barely shakes the frame but arcs, chars coils and smokes; a rotor fault runs rough with a speed wobble and a hot bar; a shaft fault swings in a slow orbit; a cooling fault only slows the fan and heats the winding.</p><p>The right-hand panel shows accumulated damage, estimated time to trip, the protection code and the five spectrum positions where the fault appears. The traces are a rolling window: vibration in mm/s, motor current in A, winding temperature in °C. On a real machine vibration and current would be sampled at kilohertz; here they are shaped by the damage level so the pattern is visible.</p>'),
+  card('Reading the spectrum signature','<p>The bars show where energy appears, not calibrated amplitudes. <strong>1×</strong> is once per revolution — unbalance, eccentricity, a loose rotor. <strong>2×</strong> is twice per revolution — misalignment, coupling geometry, soft foot. <strong>BPFO</strong> is the ball-pass frequency of the outer race, with harmonics — a race defect. <strong>f(1 ± 2s)</strong> are current sidebands around the supply frequency, spaced by twice the slip — the rotor-bar signature. <strong>2fl</strong> is twice line frequency — negative-sequence current, static eccentricity, winding asymmetry. The dominant bar for the selected family is outlined in lime; hover a bar for its meaning.</p><p>Worked example, 4-pole motor at 1475 rpm on 50 Hz, slip s ≈ 1.7 %: 1× = 24.6 Hz, 2× = 49.2 Hz, BPFO ≈ (Nb/2)(1 − d/D cos α)·fr ≈ 3.2 × 24.6 ≈ 79 Hz for eight balls with d/D cos α ≈ 0.2, f(1 ± 2s) = 50 ± 1.7 Hz, and 2fl = 100 Hz.</p><p>Bearing defects are easiest to see in an envelope spectrum, not the raw velocity spectrum. Real machines show several signatures at once; the diagnostic question is which one appeared first and how it grows with load.</p>'),
   card('Life is a thermal budget','<p>Insulation ageing is chemical, and the field rule is the Montsinger approximation: life halves for every 8–10 K sustained rise above the rated hot spot. The model here uses 10 K and a Class F reference of 155 °C, so 165 °C gives 0.50× life, 145 °C gives 2.00× and 185 °C gives 0.13×.</p><p>This is why a motor rated Class F with Class B rise (80 K) lasts: the margin is deliberate. It is also why cooling, ambient, altitude and harmonics matter more than the nameplate kW suggests. A clogged cowl or a 3 % voltage unbalance can consume that margin without ever tripping the overload.</p>'),
   card('Voltage unbalance is silent derating','<p>Current unbalance is typically 6–10 times voltage unbalance, and the negative-sequence current heats the rotor. NEMA MG 1 guidance derates the motor to about 0.98 at 1 %, 0.95 at 2 %, 0.88 at 3 % and 0.75 at 5 % unbalance; the temperature-rise penalty is roughly 2 × (%unbalance)², so 5 % adds about 50 % to the rise.</p><p>A motor can run for years at 3 % unbalance and simply die early. Log the supply over a full production cycle, not for five minutes, and check all three phase currents as well as voltages.</p>'),
   card('From symptom to proof','<p>Winding: insulation resistance and PI first, then winding-resistance balance, surge comparison and partial discharge. A low IR that recovers after drying is moisture; one that does not is damage.</p><p>Bearings: velocity spectrum for the running condition, envelope demodulation for early defects, grease condition, and shaft-voltage measurement on inverter-fed machines. Non-synchronous peaks are the giveaway.</p><p>Rotor: MCSA under steady load, looking for sidebands at f(1 ± 2s), plus rotor resistance and a visual check. Mechanical: vibration phase, laser alignment, runout, bump test.</p><p>Every test answers a different question. Replacing the test with an opinion is how repeat failures happen.</p>'),

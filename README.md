@@ -6,7 +6,7 @@ motor physics, encoder and tuning behaviour, functional safety, communications, 
 Open `NORD-motor-and-drive-explorer.html` in any modern browser. No build step, no server, no dependencies.
 Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file (about 14 MB).
 
-## The motor failure chapters
+## The motor failure chapter
 
 Chapter 43, **Where motors fail — evidence, mechanism and the trip**, sits under the Motor lesson
 (`#motor`) in the lesson menu and is deep-linkable at:
@@ -20,16 +20,20 @@ switches the evidence, the traces and the simulation together:
 
 - five failure families and their published shares — bearings, stator winding, rotor, shaft/coupling,
   application and environment;
-- a clickable, animated motor cross-section: the rotor turns, the frame shakes with the fault, the winding
-  glows with the hot spot, and bearing spall / rotor crack / insulation arcing appear as damage grows;
+- a clickable, animated motor cross-section where each mechanism moves differently: bearing rattle with
+  impact rings and local heat, stator arcing with charred coils and smoke, rotor speed wobble with a hot
+  bar and growing crack, shaft orbit with eccentric offset, and cooling loss with a slowing fan and broad
+  heat — damage overlays appear only for their own family;
 - a drive panel with READY → WARN → ALARM → TRIP, protection LEDs, health bar, estimated time to trip and
   the protection code;
-- a spectrum-signature panel (1×, 2×, BPFO, f(1±2s), 2×line) and live vibration, current and winding
-  temperature traces, so you can see which channel moves first;
+- a spectrum-signature panel (1×, 2×, BPFO, f(1±2s), 2×line) with a lime dominant bar, hover explanations
+  and a dynamic "what this signature means" line, plus live vibration, current and winding temperature
+  traces, so you can see which channel moves first;
 - the evidence chain for the selected family: primary stress, first test, prevention;
 - live hot-spot temperature and Montsinger insulation-life readouts, plus the NEMA unbalance derating
   background in the reference cards;
-- eight reference cards including field photographs of an overheated stator and a squirrel-cage rotor.
+- nine reference cards, including a worked spectrum example (1475 rpm, 50 Hz, s ≈ 1.7 %) and field
+  photographs of an overheated stator and a squirrel-cage rotor.
 
 Controls: failure family, time scale (1× / 4× / 12×), start with 0–95 % damage, Pause and Reset.
 The simulation is a teaching model, not a reliability prediction or settings advice. The numbers are built
