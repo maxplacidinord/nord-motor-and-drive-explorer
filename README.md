@@ -39,6 +39,10 @@ Controls: failure family, time scale (1× / 4× / 12×), start with 0–95 % dam
 The simulation is a teaching model, not a reliability prediction or settings advice. The numbers are built
 on published rules (IEC 60034, IEEE 43/1415, ISO 20816, NEMA MG 1, EASA AR100).
 
+Below the stage, every chapter's notes and reference cards are laid out as a single-column article (a
+720 px measure) with larger type, section headings and full-width figures, so long explanations read as
+prose instead of being squeezed into a card grid.
+
 ### Photograph credits
 
 The field photographs in chapter 43 are embedded from Wikimedia Commons:
