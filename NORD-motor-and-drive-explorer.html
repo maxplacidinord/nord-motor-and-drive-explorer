@@ -1253,11 +1253,11 @@ initialiseAtlas=function(){
  contextualControls();
 };
 details[4]=[
- card('Relative flux estimate','<p>The gauge shows the ideal relative V/f flux estimate: 100% while voltage can rise in proportion to frequency, then base frequency / actual frequency above the voltage ceiling. At zero frequency this simple model commands zero voltage; it does not model low-speed boost.</p>'),
- card('100 Hz needs its own motor rating','<p>The base-frequency control changes an ideal voltage curve. NORD’s 100 Hz characteristic also requires specially calculated motor data and a lower constant-torque rating. In the documented 80L/4 example, 100 Hz uses 3.61 Nm versus 5.21 Nm at the normal 50 Hz rating.</p><p>Open “Compare 50 / 87 / 100 Hz” above to see the three torque envelopes, winding connections and motor-data differences together.</p>')
+ card('Relative flux estimate','<p>The gauge shows the ideal relative V/f flux estimate: 100% while voltage can rise in proportion to frequency, then base frequency / actual frequency above the voltage ceiling. At zero frequency this simple model commands zero voltage; it does not model low-speed boost.</p><p>Real drives add low-speed boost and slip compensation because the ideal curve cannot hold flux at low frequency. Without boost, a loaded motor at 5 Hz stalls or draws excessive current.</p>'+mfFig(mfChartVf(),'The ideal V/f line: voltage rises with frequency to the base point, then stays capped while flux and available torque fall.')),
+ card('100 Hz needs its own motor rating','<p>The base-frequency control changes an ideal voltage curve. NORD’s 100 Hz characteristic also requires specially calculated motor data and a lower constant-torque rating. In the documented 80L/4 example, 100 Hz uses 3.61 Nm versus 5.21 Nm at the normal 50 Hz rating.</p><p>Open “Compare 50 / 87 / 100 Hz” above to see the three torque envelopes, winding connections and motor-data differences together.</p><p>Above base speed the voltage is capped, so flux falls and torque falls with speed. The 87 Hz and 100 Hz characteristics are specific motor ratings, not universal settings; check insulation, bearings and the driven load before changing the base frequency.</p>')
 ];
 sources[4]='Local NORD characteristics: '+manual(258,'§8.8.1, pp. 258–259 · 50 Hz')+'; '+manual(260,'§8.8.2, pp. 260–261 · 87 Hz')+'; '+manual(262,'§8.8.3, p. 262 · 100 Hz')+'. The flux gauge is an ideal relative V/f teaching model.';
-details[2]=[card('Three windings in either connection','<p>The U1–U2, V1–V2 and W1–W2 windings all remain present in delta. Each edge of the triangle is one winding. Its corners join the end of one winding to the start of the next.</p><p class="formula">Delta: U1 + W2 · V1 + U2 · W1 + V2<br>Star: U2 + V2 + W2 joined together</p><p>The home drawing labels each delta winding separately from its linked terminal pairs. These follow the standard six-terminal NORD example.</p>')];
+details[2]=[card('Three windings in either connection','<p>The U1–U2, V1–V2 and W1–W2 windings all remain present in delta. Each edge of the triangle is one winding. Its corners join the end of one winding to the start of the next.</p><p class="formula">Delta: U1 + W2 · V1 + U2 · W1 + V2<br>Star: U2 + V2 + W2 joined together</p><p>The home drawing labels each delta winding separately from its linked terminal pairs. These follow the standard six-terminal NORD example.</p><p>In star, each winding sees phase-to-neutral voltage: about 230 V on a 400 V system. In delta, each winding sees the full line-to-line voltage: 400 V. The winding current differs by √3 for the same shaft power, which is why the nameplate carries two voltage/current pairs.</p><p>A wrong link is not a subtle error. Star on a motor wired for delta loses torque and may overheat; delta on a star-rated winding overstresses the insulation. Check the nameplate and the terminal diagram before energising.</p>'+mfFig(mfChartStarDelta(),'Star links the three ends at a neutral point; delta connects each end to the start of the next winding. The copper does not change—only the voltage and current seen by each winding.'))];
 sources[2]='Local NORD wiring evidence: '+catalogueLink(36,'A34 / PDF p. 36 · three-phase motor star / delta circuit diagrams')+'. Use the supplied motor diagram for the installed motor.';
 details[20].push(card('Motor diagram symbols','<p>The green arrow is the rotating <b>stator magnetic field</b>, at 120 × frequency / pole count. It is not the induction rotor position: that rotor normally runs slower by its slip. Open “Rotating field / rotor” here to compare them.</p><p>In delta, all three windings remain: U1–U2, V1–V2 and W1–W2. Each corner links two winding terminals; V1–V2 is the edge between the V1+U2 and W1+V2 corners.</p>'));
 sources[20]+=' Winding terminals: '+catalogueLink(36,'A34 / PDF p. 36 · standard star / delta diagrams')+'.';
@@ -1275,9 +1275,9 @@ scenes[3].idea='Each phase leg connects its output to either DC+ or DC−. In th
 scenes[3].limit='The centred line-pulse view is an ideal two-leg example: one leg switches while the other connects to DC−, exchanging roles each half-wave. It illustrates signed pulse width and does not represent a complete three-phase modulation strategy. The three-phase view compares 120°-shifted sine references with a shared triangle carrier. Low carrier ratios make individual pulses visible and are not NORD switching-frequency settings. Real IGBT drives insert dead time with both gate commands off; current then depends on the inductive load and diode paths. Dead time, switching losses and current dynamics are not simulated.';
 scenes[3].take='The lower IGBT takes the complementary command. A zero line-voltage pulse can occur while both phase outputs connect to the same DC rail.';
 details[3]=[
- card('Line and pole voltage references','<p class="formula">Pole U→midpoint = (2 × upperU − 1) × Vdc / 2<br>Line U→V = (upperU − upperV) × Vdc</p><p>A pole switches between +Vdc/2 and −Vdc/2 relative to an imaginary DC midpoint. It uses both levels even in a positive sine half-cycle; their relative widths set the average. Its gate commands are separate 0/1 signals.</p><p>Between U and V, equal leg states give zero voltage. Opposite states give +Vdc or −Vdc. The line view starts at the rising zero crossing of its fundamental, showing positive pulses in the positive half-cycle and negative pulses in the negative half-cycle.</p>'),
- card('Centered pulses and complementary gates','<p>In this teaching model the reference is held for one carrier period. Comparing it with a symmetric triangle changes both edges of a pulse around the period centre. The lower gate receives the opposite command.</p><p>Real voltage-source inverters add a brief interval with both commands off so the devices do not short the DC link during changeover. Antiparallel diodes can carry inductive current; a gate command is not a complete measurement of device current.</p>'),
- card('Carrier ratio and switching frequency','<p>The slider is a deliberately small carrier-to-output-frequency ratio. On SK 500P, P504 specifies the power section’s pulse frequency in kHz. Motor output frequency is a separate quantity in Hz.</p><p>BU 0600 describes how increasing pulse frequency can reduce motor noise while increasing EMC effects and limiting available current. Its special P504 codes must be read as functions, not as literal frequency values. This explorer does not recommend P504 settings.</p>')
+ card('Line and pole voltage references','<p class="formula">Pole U→midpoint = (2 × upperU − 1) × Vdc / 2<br>Line U→V = (upperU − upperV) × Vdc</p><p>A pole switches between +Vdc/2 and −Vdc/2 relative to an imaginary DC midpoint. It uses both levels even in a positive sine half-cycle; their relative widths set the average. Its gate commands are separate 0/1 signals.</p><p>Between U and V, equal leg states give zero voltage. Opposite states give +Vdc or −Vdc. The line view starts at the rising zero crossing of its fundamental, showing positive pulses in the positive half-cycle and negative pulses in the negative half-cycle.</p><p>The average pole voltage is set by the duty ratio, while the line voltage is the difference between two poles. That is why the line waveform has three levels even though each pole has only two states.</p>'+mfFig(mfChartPwm(),'A sine reference compared with a triangular carrier. The gate is on while the reference is above the carrier; the average of the resulting pulses follows the sine.')),
+ card('Centered pulses and complementary gates','<p>In this teaching model the reference is held for one carrier period. Comparing it with a symmetric triangle changes both edges of a pulse around the period centre. The lower gate receives the opposite command.</p><p>Real voltage-source inverters add a brief interval with both commands off so the devices do not short the DC link during changeover. Antiparallel diodes can carry inductive current; a gate command is not a complete measurement of device current.</p><p>Dead time prevents shoot-through but distorts the output at low current, especially near the zero crossing. The error is small at full load and significant at light load, which is one reason low-current waveforms look rougher than the textbook picture.</p>'),
+ card('Carrier ratio and switching frequency','<p>The slider is a deliberately small carrier-to-output-frequency ratio. On SK 500P, P504 specifies the power section’s pulse frequency in kHz. Motor output frequency is a separate quantity in Hz.</p><p>BU 0600 describes how increasing pulse frequency can reduce motor noise while increasing EMC effects and limiting available current. Its special P504 codes must be read as functions, not as literal frequency values. This explorer does not recommend P504 settings.</p><p>Higher switching frequency reduces current ripple and audible noise, but it also raises switching loss and EMC emissions. The useful setting is a compromise between those effects, not a maximum to chase.</p>')
 ];
 sources[3]='Local NORD evidence: '+manual(166,'P504, p. 166 · pulse frequency')+'; '+manual(251,'§8.4.3, p. 251 · output versus pulse frequency')+'. Supplemental switching fundamentals: <a href="https://developerhelp.microchip.com/xwiki/bin/view/applications/power/digital-power-converter-basics/digital-peripherals-mimicking-analog-behavior/pwm-edge-center-aligned-modes/" target="_blank" rel="noopener">Microchip · centered PWM and dead time</a>; <a href="https://www.ti.com/lit/ug/tidueg8a/tidueg8a.pdf#page=14" target="_blank" rel="noopener">Texas Instruments TIDUEG8A · p. 14 · complementary IGBT gate signals</a>. Voltage levels are derived from the ideal bridge connections.';
 
@@ -2342,7 +2342,7 @@ details[14]=[
  ...details[19].slice(0,3)
 ];
 sources[14]='Local NORD evidence: '+manual(71,'§4.2.1, p. 71 · encoder-based CFC and current control')+'; '+manual(74,'§4.2.3, p. 74 · separate encoder, current and speed setup')+'; '+manual(121,'P312 / P315, pp. 121–122 · torque and field current controllers')+'; '+manual(64,'§2.6, pp. 64–65 · encoder interfaces')+`; <a href="${ag0100}#page=17" target="_blank" rel="noopener">AG 0100 EN-3216 · pp. 17, 19–20 · rotor-flux d/q, encoder and current controllers</a>. Supplemental transform conventions: <a href="${transformSource}" target="_blank" rel="noopener">Microchip FOC Transformations</a>.`;
-details[1]=[card('K1 switches the three incoming lines together','<p>The home wiring includes an example external three-pole mains contactor, K1. Its contacts are shown closed. The dashed mechanical link means they operate together; the three phases are never connected to each other.</p><p>It sits ahead of the drive rectifier. In the illustrated brake arrangement, the separate brake supply branches from the mains before K1. Its own correctly rated control switches the brake release.</p><p>Use the drive enable / run command for normal motion control. Mains switching is a separate action: BU 0600 specifies 60 seconds between mains-on events in its normal operating cycle.</p>')];
+details[1]=[card('K1 switches the three incoming lines together','<p>The home wiring includes an example external three-pole mains contactor, K1. Its contacts are shown closed. The dashed mechanical link means they operate together; the three phases are never connected to each other.</p><p>It sits ahead of the drive rectifier. In the illustrated brake arrangement, the separate brake supply branches from the mains before K1. Its own correctly rated control switches the brake release.</p><p>Use the drive enable / run command for normal motion control. Mains switching is a separate action: BU 0600 specifies 60 seconds between mains-on events in its normal operating cycle.</p><p>A contactor is a switching device, not a control strategy. Every close is an inrush event: the DC-link capacitor looks almost like a short until it charges, and the contactor carries that current until the precharge path takes over. Closing it repeatedly, or using it as a start/stop button, shortens both the contactor and the precharge resistor.</p><p>The 60-second rule is a thermal rule, not a suggestion. It gives the charging resistor time to cool and keeps the contactor within its rated operating frequency. If a machine needs frequent restarts, use the drive’s run command and leave the contactor closed.</p>'+mfFig(mfChartContactor(),'The contactor isolates the drive; it does not have to start and stop the motor. The minimum off interval protects the precharge circuit and the contactor itself.'))];
 sources[1]='Local NORD evidence: '+manual(48,'§2.5.3.2, p. 48 · simultaneous switching of all mains poles')+'; '+manual(229,'§7.1, p. 229 · mains-on waiting period')+'. K1 is an illustrative external line contactor, not a claim that it is supplied inside the drive.';
 related[9]=[8,15,7];funnels[9]=[8,15,7];related[14]=[3,11,20,18];funnels[14]=[3,11,20,18];related[20]=[12,6,14,18];funnels[20]=[12,6,14,18];
 parentLesson[11]=14;parentLesson[18]=14;
@@ -6393,6 +6393,7 @@ maRegister(24,{
  ],sources:'Local NORD: '+maLocal('Manuals/04 Application Guides/AG 0101 - Drive Optimisation.pdf',38,'AG 0101 EN-3216, p. 38 · P241/P243')+'; '+maLocal('Manuals/04 Application Guides/AG 0101 - Drive Optimisation.pdf',47,'p. 47 · IPMSM and SPMSM inductances')+'; '+maLocal('Manuals/02 Technical Information/TI60-0001 - Product information - IE4, IE5 synchronous motors.pdf',17,'TI60-0001, PDF p. 17 / printed p. 15 · described NORD motors have buried magnets')+'. Supplemental general motor model: '+maLink('https://www.mathworks.com/help/sps/ref/synchronousreluctancemachine.html','MathWorks · synchronous reluctance machine')+'. The NORD product document is a historical description, not a current portfolio or SynRM-support claim.'
 });
 
+details[24].push(card('Reading the rotor comparison','<p>Four rotors can look identical from the terminal box. The difference is inside: a cage, surface magnets, buried magnets or flux barriers. That changes the equivalent circuit, the need for an encoder, the back-EMF at speed and the safe way to spin the shaft.</p><p>The practical test is a combination of nameplate data and measurement: resistance and inductance per phase, back-EMF when the shaft is turned by hand, and a check for magnet attraction. Never assume a used motor is an induction machine just because the frame looks conventional.</p>'+mfFig(mfChartRotors(),'The rotor family changes the control model, the tests and the safe handling rules. The stator is the same in all four sketches.')));
 maRegister(25,{
  slug:'reluctance-mtpa',nav:'Reluctance torque · MTPA',title:'Magnet torque, reluctance torque and current angle',
  sub:'Rotate the current vector and separate the two torque terms. Compare an IPMSM with a surface PMSM and a magnet-free SynRM.',
@@ -6429,6 +6430,7 @@ maRegister(25,{
  ],sources:'Local NORD: '+maLocal('Manuals/04 Application Guides/AG 0101 - Drive Optimisation.pdf',38,'AG 0101 EN-3216, p. 38 · P243 reluctance angle and P241 inductances')+'. Supplemental equations and conventions: '+maLink('https://www.mathworks.com/help/mcb/ref/synrmtorqueestimator.html','MathWorks · SynRM torque and axis conventions')+'; '+maLink('https://www.mathworks.com/help/mcb/ug/pmsm-characteristics-constraint-curves.html','MathWorks · PMSM MTPA and constraint curves')+'. Numerical motor quantities are explicit teaching examples.'
 });
 
+details[25].push(card('Reading the torque curves','<p>At low current the magnet term dominates because it is proportional to current, while reluctance torque grows with the square of current. As the current rises, the optimum angle moves away from 90° and the reluctance contribution becomes a useful part of the total.</p><p>Use the curve to understand the sign and the optimum, not to set a real drive from a teaching model. Saturation, cross-coupling and the voltage limit move the real MTPA point, which is why commissioning checks the result at the shaft.</p>'+mfFig(mfChartTorqueAngle(),'Illustrative IPMSM: magnet torque peaks near 90°, reluctance torque near 135°, and the sum near 125°. Real machines and limits move these points.')));
 maRegister(26,{
  slug:'dq-voltage-limits',nav:'d/q voltage · field weakening',title:'Why motor voltage and current point in different directions',
  sub:'Set id, iq, speed and DC-link voltage. The required voltage vector and the reachable current region update together.',
@@ -6463,6 +6465,7 @@ maRegister(26,{
  ],sources:'Local NORD: '+maLocal('Manuals/04 Application Guides/AG 0101 - Drive Optimisation.pdf',38,'AG 0101 EN-3216, p. 38 · PMSM electrical parameters')+'. Supplemental analytical model: '+maLink('https://www.mathworks.com/help/mcb/ref/pmsmfeedforwardcontrol.html','MathWorks · PMSM feedforward voltage terms')+'; '+maLink('https://www.mathworks.com/help/mcb/ug/pmsm-characteristics-constraint-curves.html','MathWorks · current/voltage constraints and field weakening')+'. The illustrated operating boundary is not a NORD motor rating.'
 });
 
+details[26].push(card('Reading the voltage boundary','<p>At low speed the current limit usually binds first: the drive can produce the voltage, but not more current. At high speed the voltage limit binds first: the drive has current available but cannot push it against the rising back-EMF. Field weakening moves the operating point left, using negative id to keep the voltage requirement inside the ellipse.</p><p>The two boundaries must be checked together. A point can satisfy voltage and still exceed current, or satisfy current and still demand more voltage than the DC link can produce. That is why a drive can report “current limit” at one speed and “voltage limit” at another with the same load.</p>'+mfFig(mfChartDQ(),'Current limit is a circle; voltage limit is a speed-dependent ellipse. Reachable steady operation lies inside both.')));
 maRegister(27,{
  slug:'magnetic-circuits',nav:'Flux · saturation · temperature',title:'Magnetising flux, leakage, saturation and rotor time constant',
  sub:'Increase current to see diminishing flux gain. Heat the conductor to change resistance and the time needed to establish rotor flux.',
@@ -6730,6 +6733,7 @@ function maDrawCablePhysics(){
   '000 and 111 each have zero line voltage, but their common-mode levels differ by the entire '+f(V,0)+' V DC bus.'],M,13,25);
 }
 
+details[27].push(card('Reading the saturation curve','<p>The secant inductance λ/i falls steadily because it averages the whole magnetisation curve from zero. The incremental inductance dλ/di is the local slope: it stays higher at low current and collapses as the iron saturates. A current controller responds to the local slope, which is why a gain that works at low flux can be sluggish or unstable at high flux.</p><p>Temperature adds a second effect: rotor resistance rises, the rotor time constant Lr/Rr falls, and flux builds faster but copper loss rises. Neither effect is visible on the nameplate, and both change with the operating point.</p>'+mfFig(mfChartSaturation(),'The secant is the average inductance; the tangent is what a small current change actually sees. Saturation makes the two diverge.')));
 maRegister(28,{
  slug:'inverter-states',nav:'Inverter states & current paths',title:'Eight switching states and the current return path',
  sub:'Inspect the gates, the conducting semiconductor, winding voltage and instantaneous energy direction separately.',
@@ -8468,9 +8472,9 @@ initialiseAtlas=function(){
 
 // Primary progression lives above. Existing deep-reference links stay optional.
 details[0]=[
- card('Follow the power path','<p>Begin with L1, L2 and L3, then the diode rectifier, DC-link precharge and energy storage, inverter switches, cable, motor windings and shaft load. Each numbered chapter gathers the related diagrams into selectable views.</p>'),
- card('Then follow the feedback path','<p>After the motor and load, follow current and shaft measurements back into the controller. Coordinate transforms and current regulation explain how the drive chooses its next voltage command. The two tuning courses apply that structure to different motor types.</p>'),
- card('Stopping and safety act on the whole system','<p>Braking changes the direction or destination of energy. The final chapters separate electrical braking, a holding brake, safety torque permission and deliberate restart. They appear last in the learning sequence, but these functions supervise the physical system throughout operation.</p>')
+ card('Follow the power path','<p>Begin with L1, L2 and L3, then the diode rectifier, DC-link precharge and energy storage, inverter switches, cable, motor windings and shaft load. Each numbered chapter gathers the related diagrams into selectable views.</p><p>The order matters because a fault in one stage often surfaces in another: a tired DC-link capacitor shows up as inverter trips, and a damaged cable shows up as motor overcurrent. Once you can name the stage, the diagnostic tests narrow quickly.</p>'+mfFig(mfChartPowerFlow(),'The power path and the feedback path. The drive measures current and shaft state, then chooses the next voltage vector.')),
+ card('Then follow the feedback path','<p>After the motor and load, follow current and shaft measurements back into the controller. Coordinate transforms and current regulation explain how the drive chooses its next voltage command. The two tuning courses apply that structure to different motor types.</p><p>The loops run at very different speeds. Current control acts at the PWM rate, speed control in tens of hertz, and position loops slower still. That hierarchy is why a current-limit problem can look like a speed-loop problem until you look at the inner loop.</p>'),
+ card('Stopping and safety act on the whole system','<p>Braking changes the direction or destination of energy. The final chapters separate electrical braking, a holding brake, safety torque permission and deliberate restart. They appear last in the learning sequence, but these functions supervise the physical system throughout operation.</p><p>Stopping is not the absence of a start command. It is a managed transfer of energy—electrical braking, a mechanical brake or a controlled coast—and each choice has its own failure modes, wear and safety requirements.</p>')
 ];
 // BEGIN BRAKE RECTIFIER COURSE · 2026-09-18
 // Standalone teaching diagrams. Sources are the local NORD editions linked below.
@@ -9692,6 +9696,229 @@ function mfChartWeibull(){
   s+=mfT(x0+30+a[0]*(x1-x0-60),y0+20+a[1]*140,a[2],a[3],10.5,'start','600');
  });
  s+=mfT(26,258,'Below 1: infant mortality. Near 1: random. Above 1: wear-out.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartPowerFlow(){
+ const items=[['Supply','L1 L2 L3',C[0]],['Rectifier','AC to DC',C[1]],['DC link','stores energy',C[2]],['Inverter','DC to AC',L],['Motor','torque',G],['Load','shaft','#d8c98d']];
+ const w=96,gap=16,x0=24,y=70,h=58;
+ let s='<svg viewBox="0 0 720 236" role="img" aria-label="Power flow from supply to load, with a feedback path">';
+ s+='<defs><marker id="mfa0" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#55708a"/></marker></defs>';
+ s+='<rect width="720" height="236" fill="#0b1724"/>';
+ s+=mfT(26,34,'Follow the energy, then follow the signals','#e8f1f8',16,'start','600');
+ items.forEach((it,i)=>{
+  const x=x0+i*(w+gap);
+  s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="9" fill="#122132" stroke="'+it[2]+'"/>';
+  s+=mfT(x+w/2,y+24,it[0],'#e8f1f8',12,'middle','600');
+  s+=mfT(x+w/2,y+42,it[1],'#9fb0c7',9.5,'middle');
+  if(i<items.length-1)s+=mfT(x+w+8,y+35,'›','#55708a',16,'middle');
+ });
+ s+='<rect x="318" y="168" width="180" height="44" rx="8" fill="#20362a" stroke="'+L+'"/>';
+ s+=mfT(408,188,'Control','#dbe6ef',12,'middle','600');
+ s+=mfT(408,203,'current · speed · position','#9fb0c7',9,'middle');
+ s+='<path d="M632 128 V190 H502" fill="none" stroke="#55708a" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#mfa0)"/>';
+ s+='<path d="M408 168 V132" fill="none" stroke="#55708a" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#mfa0)"/>';
+ s+=mfT(566,183,'measurements','#8097af',9,'middle');
+ s+=mfT(26,228,'The power path explains where energy goes; the feedback path explains how the drive decides what to do next.','#9fb0c7',10);
+ return s+'</svg>';
+}
+function mfChartContactor(){
+ const x=t=>60+t*5;
+ let s='<svg viewBox="0 0 720 232" role="img" aria-label="Mains contactor timing with a sixty-second minimum off interval">';
+ s+='<rect width="720" height="232" fill="#0b1724"/>';
+ s+=mfT(26,32,'Mains switching is not a run command','#e8f1f8',16,'start','600');
+ s+='<path d="M60 100 H210 V132 H510 V100 H660" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ s+=mfT(135,90,'K1 closed','#9aefb3',10.5,'middle','600');
+ s+=mfT(360,124,'K1 open','#8097af',10.5,'middle');
+ s+=mfT(585,90,'next ON','#9aefb3',10.5,'middle','600');
+ s+='<path d="M210 160 H510" stroke="#ffc475" stroke-width="1.2" marker-start="url(#mfb0)" marker-end="url(#mfb0)"/>';
+ s+='<defs><marker id="mfb0" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,3 L6,0 L6,6 Z" fill="#ffc475"/></marker></defs>';
+ s+=mfT(360,153,'≥ 60 s between mains-on events','#ffc475',10,'middle');
+ for(let t=0;t<=120;t+=30){
+  s+=mfL(x(t),176,x(t),182,'#3b556e',1);
+  s+=mfT(x(t),198,t+' s','#8097af',9,'middle');
+ }
+ s+=mfT(26,226,'Use the drive enable for normal motion; reserve the contactor for isolation and emergencies.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartStarDelta(){
+ let s='<svg viewBox="0 0 720 292" role="img" aria-label="Star and delta winding connections">';
+ s+='<rect width="720" height="292" fill="#0b1724"/>';
+ s+=mfT(26,32,'Same windings, two connections','#e8f1f8',16,'start','600');
+ s+=mfT(180,58,'Star (Y)','#dbe6ef',12.5,'middle','600');
+ const st=[[100,84,C[0],'U1'],[180,84,C[1],'V1'],[260,84,C[2],'W1']];
+ st.forEach(a=>{
+  s+=mfL(a[0],80,180,208,a[2],3.2);
+  s+=mfT(a[0],72,a[3],a[2],11,'middle','600');
+ });
+ s+='<circle cx="180" cy="210" r="5" fill="'+L+'"/>';
+ s+=mfT(180,232,'U2 + V2 + W2 linked','#9fb0c7',10,'middle');
+ s+=mfT(180,248,'neutral point','#8097af',9,'middle');
+ s+=mfT(360,58,'Delta (Δ)','#dbe6ef',12.5,'middle','600');
+ s+='<path d="M480 84 L620 84 L550 210 Z" fill="none" stroke="#2b4056" stroke-width="1.2"/>';
+ s+=mfL(480,84,620,84,C[0],3.2);
+ s+=mfL(620,84,550,210,C[1],3.2);
+ s+=mfL(550,210,480,84,C[2],3.2);
+ s+=mfT(550,76,'U winding','#5bd9ff',10,'middle');
+ s+=mfT(604,152,'V winding','#ffc475',10,'start');
+ s+=mfT(496,152,'W winding','#c5a1ff',10,'end');
+ s+=mfT(474,80,'U1/W2','#8097af',9,'end');
+ s+=mfT(626,80,'V1/U2','#8097af',9,'start');
+ s+=mfT(550,226,'W1/V2','#8097af',9,'middle');
+ s+=mfT(26,278,'The links set the voltage across each winding; they do not change the winding itself.','#9fb0c7',10);
+ return s+'</svg>';
+}
+function mfChartPwm(){
+ const x0=60,x1=660,mid=140,amp=45;
+ const sx=x=>x0+(x-x0);
+ const sinY=x=>mid-amp*Math.sin(2*Math.PI*(x-x0)/(x1-x0));
+ const triY=x=>{const t=((x-x0)/(x1-x0))*10;const p=t%1;const tri=p<.5?p*2:2-2*p;return 185-tri*90;};
+ let sp=[],cp=[],gp=[];
+ for(let x=x0;x<=x1;x+=2){
+  sp.push(x.toFixed(1)+','+sinY(x).toFixed(1));
+  cp.push(x.toFixed(1)+','+triY(x).toFixed(1));
+  gp.push(x.toFixed(1)+','+(sinY(x)<triY(x)?250:296));
+ }
+ let s='<svg viewBox="0 0 720 340" role="img" aria-label="Pulse-width modulation from a sine reference and a triangular carrier">';
+ s+='<rect width="720" height="340" fill="#0b1724"/>';
+ s+=mfT(26,32,'Compare the reference with a triangle','#e8f1f8',16,'start','600');
+ s+=mfL(x0,mid,x1,mid,'#22384d',1,'3 4');
+ s+='<polyline points="'+cp.join(' ')+'" fill="none" stroke="#3b556e" stroke-width="1.4"/>';
+ s+='<polyline points="'+sp.join(' ')+'" fill="none" stroke="'+C[1]+'" stroke-width="2.4"/>';
+ s+=mfT(x1,74,'reference','#5bd9ff',10,'end');
+ s+=mfT(x1,92,'carrier','#8097af',10,'end');
+ s+='<polyline points="'+gp.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.2"/>';
+ s+=mfL(x0,300,x1,300,'#22384d',1);
+ s+=mfT(x0,322,'gate U: on when the reference is above the carrier','#9fb0c7',9.5);
+ s+=mfT(26,338,'Dead time is not shown; real bridge legs insert it to avoid shoot-through.','#8097af',9);
+ return s+'</svg>';
+}
+function mfChartVf(){
+ const x0=80,x1=660,y0=60,y1=240;
+ const X=f=>x0+f/100*(x1-x0),Y=v=>y1-v/110*(y1-y0);
+ let s='<svg viewBox="0 0 720 300" role="img" aria-label="Ideal volts per hertz curve with base frequency and field weakening">';
+ s+='<rect width="720" height="300" fill="#0b1724"/>';
+ s+='<rect x="'+x0+'" y="'+y0+'" width="'+(X(50)-x0)+'" height="'+(y1-y0)+'" fill="#122132"/>';
+ s+='<rect x="'+X(50)+'" y="'+y0+'" width="'+(x1-X(50))+'" height="'+(y1-y0)+'" fill="#1a1a12"/>';
+ s+=mfT(26,32,'V/f is a straight line until it is not','#e8f1f8',16,'start','600');
+ for(let f=0;f<=100;f+=20){
+  s+=mfL(X(f),y0,X(f),y1,'#22384d',1);
+  s+=mfT(X(f),y1+18,f+' Hz','#8097af',9,'middle');
+ }
+ for(let v=0;v<=100;v+=25){
+  s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);
+  s+=mfT(x0-10,Y(v)+4,v+' %','#8097af',9,'end');
+ }
+ s+=mfL(x0,Y(0),x1,Y(0),'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ s+='<polyline points="'+X(0)+','+Y(0)+' '+X(50)+','+Y(100)+' '+X(100)+','+Y(100)+'" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ s+=mfT(230,215,'constant torque','#9fb0c7',10.5,'middle');
+ s+=mfT(520,215,'constant power, flux falls','#ffc475',10.5,'middle');
+ s+=mfT(X(50),Y(100)-12,'base','#dbe6ef',9.5,'middle');
+ s+=mfT(X(87),Y(100)-30,'87 Hz','#8097af',9,'middle');
+ s+=mfT(X(100),Y(100)-12,'100 Hz','#8097af',9,'middle');
+ s+=mfT(26,286,'Ideal curve: no low-speed boost, no IR compensation, and no guarantee that the motor is rated for the speed.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartRotors(){
+ const cx=[100,260,420,580],cy=112,r=50;
+ const labels=[['Cage','induced currents'],['Surface PM','magnets on the surface'],['Interior PM','buried magnets, saliency'],['Reluctance','iron paths, no magnets']];
+ let s='<svg viewBox="0 0 720 238" role="img" aria-label="Four rotor families compared">';
+ s+='<rect width="720" height="238" fill="#0b1724"/>';
+ s+=mfT(26,32,'The rotor decides how the field produces torque','#e8f1f8',16,'start','600');
+ cx.forEach((x,i)=>{
+  s+='<circle cx="'+x+'" cy="'+cy+'" r="'+r+'" fill="#26384a" stroke="#50677b" stroke-width="2"/>';
+  s+='<circle cx="'+x+'" cy="'+cy+'" r="34" fill="#1b2c3d" stroke="#3b5064" stroke-width="1.5"/>';
+  s+='<circle cx="'+x+'" cy="'+cy+'" r="3" fill="#8097af"/>';
+ });
+ for(let k=0;k<8;k++){const a=k*Math.PI/4,x=100+42*Math.cos(a),y=cy+42*Math.sin(a);s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+C[0]+'"/>';}
+ for(let k=0;k<4;k++){const a=k*Math.PI/2,x=260+35*Math.cos(a)-7,y=cy+35*Math.sin(a)-7;s+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="14" height="14" rx="2" fill="'+(k%2?C[2]:'#ff8a75')+'"/>';}
+ s+='<rect x="401" y="95" width="38" height="12" rx="3" fill="#ff8a75"/><rect x="401" y="117" width="38" height="12" rx="3" fill="'+C[2]+'"/>';
+ s+='<rect x="381" y="106" width="12" height="38" rx="3" fill="#ff8a75"/><rect x="447" y="106" width="12" height="38" rx="3" fill="'+C[2]+'"/>';
+ for(let k=0;k<3;k++){s+='<rect x="392" y="'+(92+k*16)+'" width="56" height="8" rx="4" fill="#0b1724" stroke="'+G+'"/>';}
+ labels.forEach((l,i)=>{
+  s+=mfT(cx[i],196,l[0],'#dbe6ef',12,'middle','600');
+  s+=mfT(cx[i],214,l[1],'#9fb0c7',9.5,'middle');
+ });
+ s+=mfT(26,232,'Same stator, different rotor: the control model and the tests must match the machine.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartTorqueAngle(){
+ const x0=80,x1=650,y0=60,y1=230,mid=(y0+y1)/2;
+ const X=a=>x0+a/180*(x1-x0),Y=t=>mid-t/8*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Magnet, reluctance and total torque versus current angle">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Magnet torque and reluctance torque peak at different angles','#e8f1f8',16,'start','600');
+ s+=mfL(x0,mid,x1,mid,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let a=0;a<=180;a+=30){s+=mfL(X(a),y1,X(a),y1+5,'#3b556e',1);s+=mfT(X(a),y1+19,a+'°','#8097af',9,'middle');}
+ s+=mfT(26,62,'torque','#8097af',9.5);
+ const curves=[
+  ['magnet',a=>5*Math.sin(a*Math.PI/180),C[0]],
+  ['reluctance',a=>-2*Math.sin(2*a*Math.PI/180),C[2]],
+  ['total',a=>5*Math.sin(a*Math.PI/180)-2*Math.sin(2*a*Math.PI/180),G]
+ ];
+ curves.forEach(c=>{
+  let pts=[];
+  for(let a=0;a<=180;a+=2)pts.push(X(a).toFixed(1)+','+Y(c[1](a)).toFixed(1));
+  s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+c[2]+'" stroke-width="2.2"/>';
+ });
+ const opt=125;
+ s+='<circle cx="'+X(opt).toFixed(1)+'" cy="'+Y(5.4).toFixed(1)+'" r="4" fill="'+G+'"/>';
+ s+=mfT(X(opt)+8,Y(5.4)-8,'MTPA ≈ 125°','#b7f568',10,'start','600');
+ s+=mfT(X(90),Y(5)+18,'magnet','#5bd9ff',9.5,'middle');
+ s+=mfT(X(150),Y(1.6)-8,'reluctance','#c5a1ff',9.5,'middle');
+ s+=mfT(26,282,'Illustrative IPMSM: magnet torque peaks near 90°, reluctance torque near 135°, total near 125°.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartDQ(){
+ const x0=90,y0=50,w=260,h=260,cx=x0+w/2,cy=y0+h/2;
+ const X=v=>cx+v/50*w,Y=v=>cy-v/50*h;
+ let s='<svg viewBox="0 0 720 330" role="img" aria-label="Current circle and voltage ellipse in the dq plane">';
+ s+='<rect width="720" height="330" fill="#0b1724"/>';
+ s+=mfT(26,32,'Current and voltage limits are different shapes','#e8f1f8',16,'start','600');
+ s+=mfL(x0,cy,x0+w,cy,'#3b556e',1.2);
+ s+=mfL(cx,y0,cx,y0+h,'#3b556e',1.2);
+ s+=mfT(x0-12,cy+4,'id','#8097af',10,'end');
+ s+=mfT(cx+6,y0+16,'iq','#8097af',10);
+ s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(20/50*w).toFixed(1)+'" fill="none" stroke="'+C[0]+'" stroke-width="2"/>';
+ s+='<ellipse cx="'+X(-8).toFixed(1)+'" cy="'+cy+'" rx="'+(15/50*w).toFixed(1)+'" ry="'+(12/50*h).toFixed(1)+'" fill="none" stroke="'+C[1]+'" stroke-width="2"/>';
+ s+='<circle cx="'+X(-6).toFixed(1)+'" cy="'+Y(12).toFixed(1)+'" r="4.5" fill="'+G+'"/>';
+ s+=mfT(X(-6)+8,Y(12)+14,'selected','#b7f568',10,'start','600');
+ s+=mfT(cx,cy+110,'20 A current limit',C[0],10,'middle');
+ s+=mfT(X(-8),cy-(12/50*h)-10,'voltage limit',C[1],10,'middle');
+ s+=mfT(400,86,'The current circle is set by the inverter rating.','#dbe6ef',11);
+ s+=mfT(400,108,'The voltage ellipse shrinks and moves left as speed rises.','#dbe6ef',11);
+ s+=mfT(400,130,'Field weakening uses negative id to stay inside it.','#dbe6ef',11);
+ s+=mfT(400,164,'At standstill the voltage boundary is large;','#9fb0c7',10.5);
+ s+=mfT(400,182,'at high speed it becomes the limiting shape.','#9fb0c7',10.5);
+ s+=mfT(400,214,'A point inside one boundary but outside the other','#9fb0c7',10.5);
+ s+=mfT(400,232,'is still unreachable.','#9fb0c7',10.5);
+ s+=mfT(26,318,'Illustrative four-pole PMSM; the ellipse is not drawn to scale for a specific motor.','#8097af',9);
+ return s+'</svg>';
+}
+function mfChartSaturation(){
+ const x0=80,x1=660,y0=60,y1=230;
+ const X=i=>x0+i/16*(x1-x0),Y=l=>y1-l/1.4*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Flux linkage versus magnetising current with secant and tangent">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'More current buys less flux as the iron saturates','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let i=0;i<=16;i+=4){s+=mfL(X(i),y1,X(i),y1+5,'#3b556e',1);s+=mfT(X(i),y1+19,i+' A','#8097af',9,'middle');}
+ for(let l=0;l<=1.4;l+=.2){s+=mfL(x0,Y(l),x1,Y(l),'#22384d',1);s+=mfT(x0-8,Y(l)+4,l.toFixed(1),'#8097af',9,'end');}
+ s+=mfT(26,46,'flux (Wb)','#8097af',9.5);
+ let pts=[];
+ for(let i=0;i<=16;i+=.2)pts.push(X(i).toFixed(1)+','+Y(.78*Math.tanh(i/6)).toFixed(1));
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ const i0=6,l0=.78*Math.tanh(1);
+ s+=mfL(X(0),Y(0),X(i0),Y(l0),'#ffc475',1.6,'5 4');
+ const slope=.78/6*(1/Math.pow(Math.cosh(1),2));
+ s+=mfL(X(i0-3),Y(l0-slope*3),X(i0+3),Y(l0+slope*3),C[1],2);
+ s+='<circle cx="'+X(i0).toFixed(1)+'" cy="'+Y(l0).toFixed(1)+'" r="4" fill="'+L+'"/>';
+ s+=mfT(X(i0)+8,Y(l0)-8,'6 A','#dbe6ef',10,'start','600');
+ s+=mfT(X(10),Y(.9),'secant ?/i','#ffc475',10,'start');
+ s+=mfT(X(11),Y(1.16),'tangent d?/di','#5bd9ff',10,'start');
+ s+=mfT(26,282,'The secant is the average inductance; the tangent is what a small current change actually sees.','#9fb0c7',9.5);
  return s+'</svg>';
 }
 maRegister(43,{
