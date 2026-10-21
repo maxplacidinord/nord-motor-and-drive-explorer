@@ -6751,6 +6751,7 @@ maRegister(28,{
  ],sources:maLink(maSwSources.svm,'Imperix TN145: switching vectors and dwell')
 });
 
+details[28].push(card('Reading the state hexagon','<p>Each vertex is one active switching state, and each edge changes exactly one leg. That adjacency is what makes a sequence such as 100 → 110 → 111 cheap in commutations. The centre is the zero state: 000 and 111 both give zero line voltage, but they clamp the windings to different rails.</p><p>The hexagon is a voltage picture, not a current map. Which device conducts depends on the current direction at that instant, so the same state can be carried by an IGBT in one phase and a diode in another. Read the state, then read the current arrows.</p>'+mfFig(mfChartHexagon(),'Six active vectors and the zero states. The dashed vector is the requested average; the dwell times decide how much of each neighbour is used.')));
 maRegister(29,{
  slug:'pwm-methods',nav:'SPWM, SVPWM & voltage limits',title:'How PWM allocates time between inverter states',
  sub:'Change the modulation method, requested voltage and zero-state allocation; inspect actual duty cycles and the achieved average.',
@@ -6768,6 +6769,7 @@ maRegister(29,{
  ],sources:maLink(maSwSources.pwm,'Imperix TN146: SPWM, SVPWM and overmodulation')+' · '+maLink(maSwSources.svm,'Imperix TN145: space-vector dwell')
 });
 
+details[29].push(card('Reading the modulation limit','<p>The modulation index m compares the requested fundamental with the DC link. Plain SPWM stays linear to m = 1; space-vector allocation stays linear to m = 2/√3 ≈ 1.155 because the common-mode offset uses the bus more efficiently. Beyond that, duty saturation clips the waveform and low-order harmonics appear.</p><p>The extra range is not a higher DC voltage and not a licence to run the motor beyond its rating. It changes how the available bus is used. Check the motor current, the current-regulator margin and the resulting harmonic loss before treating 1.155 as a normal operating point.</p>'+mfFig(mfChartModulation(),'Line RMS versus modulation index. The SVPWM line reaches 0.707 Vdc before clipping; SPWM stops at 0.612 Vdc.')));
 maRegister(30,{
  slug:'switching-physics',nav:'Gate drive, dead time & switching loss',title:'What happens during an IGBT switching edge',
  sub:'Explore the gate’s floating supply, the current-dependent dead-time clamp and the voltage-current overlap inside a real switching transition.',
@@ -6785,6 +6787,7 @@ maRegister(30,{
  ],sources:maLink(maSwSources.igbt,'Infineon AN2011-05: switching energy and diode recovery')+' · '+maLink(maSwSources.gate,'Infineon 2ED28073J06F: floating supply and bootstrap charge')+' · '+maLink(maSwSources.dead,'Infineon: dead-time calculation')
 });
 
+details[30].push(card('Reading the loss curve','<p>Switching loss is roughly proportional to frequency: every edge costs energy, and more edges per second cost more power. Conduction loss depends on current and duty, not directly on frequency. The total therefore has a minimum where the falling current ripple and the rising switching loss balance.</p><p>The curve is illustrative, but the trade-off is real. Raising the switching frequency reduces ripple and audible noise while increasing heat in the devices and the EMC burden. The thermal design, the module rating and the drive’s derating rules decide where that trade-off is acceptable.</p>'+mfFig(mfChartLoss(),'Switching loss rises linearly with frequency; conduction loss stays roughly fixed. The total is what the heat sink must remove.')));
 maRegister(31,{
  slug:'motor-cables',nav:'Cable reflections & bearing currents',title:'PWM edges in the cable, frame and bearings',
  sub:'Follow a travelling voltage edge and inspect the capacitive paths that exist alongside the useful motor-current circuit.',
@@ -6930,6 +6933,7 @@ function maDrawBrakingEnergy(){
  maText(70,993,[status,'Initial rotor energy '+f(m.Ekin0,1)+' J. '+f(o.C*1000,2)+' mF from 560 to 750 V accepts '+f(.5*o.C*(750*750-560*560),2)+' J. DC-injection supply input: '+f(q.Ein,1)+' J.'],M,13,25);
 }
 
+details[31].push(card('Reading the reflection','<p>A fast edge behaves like a travelling wave, not like a steady voltage. At the motor, a large impedance mismatch reflects the wave, so the first peak can approach twice the incident step. A long cable delays the return wave, letting the peak develop before the source end can correct it.</p><p>Cable length alone is a poor rule of thumb: rise time, cable impedance, motor impedance and the DC-link voltage all matter. If the peak is close to the motor’s insulation limit, a dv/dt or sine filter changes the edge, while a longer cable makes the problem worse. Check the drive and motor instructions rather than relying on a generic length limit.</p>'+mfFig(mfChartReflection(),'Motor terminal voltage for two cable lengths. A longer cable separates the incident and reflected waves, so the first peak is more pronounced.')));
 maRegister(32,{
  slug:'dc-link-energy',nav:'DC-link ripple, precharge & energy',title:'DC-link current, capacitor heating and precharge energy',
  sub:'Trace the difference between rectifier and inverter current, then size an initial charging pulse from current, time and energy.',
@@ -9919,6 +9923,118 @@ function mfChartSaturation(){
  s+=mfT(X(10),Y(.9),'secant ?/i','#ffc475',10,'start');
  s+=mfT(X(11),Y(1.16),'tangent d?/di','#5bd9ff',10,'start');
  s+=mfT(26,282,'The secant is the average inductance; the tangent is what a small current change actually sees.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartHexagon(){
+ const cx=270,cy=156,rad=96;
+ const vecs=[['100',0],['110',60],['010',120],['011',180],['001',240],['101',300]];
+ let s='<svg viewBox="0 0 720 312" role="img" aria-label="Six active switching vectors and the zero states">';
+ s+='<rect width="720" height="312" fill="#0b1724"/>';
+ s+=mfT(26,32,'Six active vectors, two zero states','#e8f1f8',16,'start','600');
+ let pts=[];
+ vecs.forEach(v=>{const a=v[1]*Math.PI/180;pts.push((cx+rad*Math.cos(a)).toFixed(1)+','+(cy-rad*Math.sin(a)).toFixed(1));});
+ s+='<polygon points="'+pts.join(' ')+'" fill="#122132" stroke="#3b556e" stroke-width="1.5"/>';
+ vecs.forEach(v=>{
+  const a=v[1]*Math.PI/180,x=cx+rad*Math.cos(a),y=cy-rad*Math.sin(a);
+  s+=mfL(cx,cy,x,y,C[0],1.6);
+  s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+C[0]+'"/>';
+  s+=mfT(cx+(rad+18)*Math.cos(a),cy-(rad+18)*Math.sin(a)+4,v[0],'#dbe6ef',11,'middle','600');
+ });
+ s+='<circle cx="'+cx+'" cy="'+cy+'" r="6" fill="'+L+'"/>';
+ s+=mfT(cx,cy+24,'000 / 111','#9aefb3',10,'middle');
+ const a=25*Math.PI/180;
+ s+=mfL(cx,cy,cx+70*Math.cos(a),cy-70*Math.sin(a),'#ffc475',2.4,'5 4');
+ s+=mfT(cx+82*Math.cos(a),cy-82*Math.sin(a),'v*','#ffc475',11,'middle','600');
+ s+=mfT(430,96,'Each active state connects the motor','#dbe6ef',11);
+ s+=mfT(430,116,'to the rails in a different pattern.','#dbe6ef',11);
+ s+=mfT(430,146,'The vector angle is selected by the','#9fb0c7',10.5);
+ s+=mfT(430,164,'dwell times of the two neighbours.','#9fb0c7',10.5);
+ s+=mfT(430,194,'000 and 111 both give zero line','#9fb0c7',10.5);
+ s+=mfT(430,212,'voltage, but different common mode.','#9fb0c7',10.5);
+ s+=mfT(26,298,'The hexagon is a voltage picture; rotor flux is a separate state that lags it.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartModulation(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=m=>x0+m/1.2*(x1-x0),Y=v=>y1-v/.8*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Line voltage versus modulation index for SPWM and SVPWM">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'The extra 15.5% is allocation, not DC voltage','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let m=0;m<=1.2;m+=.2){s+=mfL(X(m),y1,X(m),y1+5,'#3b556e',1);s+=mfT(X(m),y1+19,m.toFixed(1),'#8097af',9,'middle');}
+ for(let v=0;v<=.8;v+=.2){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,v.toFixed(1),'#8097af',9,'end');}
+ s+=mfT(26,46,'line RMS / Vdc','#8097af',9.5);
+ const sp=[],sv=[];
+ for(let m=0;m<=1.2;m+=.01){
+  sp.push(X(m).toFixed(1)+','+Y(Math.min(.612*m,.612)).toFixed(1));
+  sv.push(X(m).toFixed(1)+','+Y(Math.min(.707*m,.707)).toFixed(1));
+ }
+ s+='<polyline points="'+sp.join(' ')+'" fill="none" stroke="'+C[1]+'" stroke-width="2.4"/>';
+ s+='<polyline points="'+sv.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ s+=mfT(X(1.05),Y(.612)-10,'SPWM 0.612','#ffc475',10,'start');
+ s+=mfT(X(1.05),Y(.707)-10,'SVPWM 0.707','#b7f568',10,'start');
+ s+=mfL(X(1),y0,X(1),y1,'#55708a',1,'4 4');
+ s+=mfT(X(1),y0-6,'m = 1','#8097af',9,'middle');
+ s+=mfL(X(1.155),y0,X(1.155),y1,'#55708a',1,'4 4');
+ s+=mfT(X(1.155),y0-6,'1.155','#8097af',9,'middle');
+ s+=mfT(26,282,'Linear range: SPWM to m = 1, SVPWM to m = 2/√3. Beyond that the waveform clips.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartLoss(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=f=>x0+(f-2)/18*(x1-x0),Y=p=>y1-p/80*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Switching and conduction loss versus switching frequency">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Switching loss grows with frequency; conduction loss does not','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let f=2;f<=20;f+=3){s+=mfL(X(f),y1,X(f),y1+5,'#3b556e',1);s+=mfT(X(f),y1+19,f+' kHz','#8097af',9,'middle');}
+ for(let p=0;p<=80;p+=20){s+=mfL(x0,Y(p),x1,Y(p),'#22384d',1);s+=mfT(x0-8,Y(p)+4,p+' W','#8097af',9,'end');}
+ s+=mfT(26,62,'loss','#8097af',9.5);
+ s+='<polyline points="'+X(2)+','+Y(25)+' '+X(20)+','+Y(25)+'" fill="none" stroke="#8097af" stroke-width="1.6" stroke-dasharray="5 4"/>';
+ let sw=[],tot=[];
+ for(let f=2;f<=20;f+=.5){
+  sw.push(X(f).toFixed(1)+','+Y(2.5*f).toFixed(1));
+  tot.push(X(f).toFixed(1)+','+Y(25+2.5*f).toFixed(1));
+ }
+ s+='<polyline points="'+sw.join(' ')+'" fill="none" stroke="'+C[1]+'" stroke-width="2.2"/>';
+ s+='<polyline points="'+tot.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.4"/>';
+ s+=mfT(X(8),Y(25)-14,'conduction','#8097af',10,'middle');
+ s+=mfT(X(8),Y(20)+4,'switching','#ffc475',10,'middle');
+ s+=mfT(X(8),Y(45)-10,'total','#b7f568',10,'middle');
+ s+='<circle cx="'+X(8).toFixed(1)+'" cy="'+Y(45).toFixed(1)+'" r="4" fill="'+L+'"/>';
+ s+=mfT(26,282,'Illustrative device: Eoff ≈ 0.31 mJ per switching event and 25 W of conduction loss.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartReflection(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=t=>x0+t/2.5*(x1-x0),Y=v=>y1-v/2.1*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Motor terminal voltage with cable reflection">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'The motor can see nearly twice the incident step','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let t=0;t<=2.5;t+=.5){s+=mfL(X(t),y1,X(t),y1+5,'#3b556e',1);s+=mfT(X(t),y1+19,t.toFixed(1)+' µs','#8097af',9,'middle');}
+ for(let v=0;v<=2;v+=.5){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,v.toFixed(1),'#8097af',9,'end');}
+ s+=mfT(26,46,'voltage (p.u.)','#8097af',9.5);
+ function curve(t0,tau){
+  let pts=[];
+  for(let t=0;t<=2.5;t+=.01){
+   let v=1;
+   if(t>=t0)v=1+0.9*Math.exp(-(t-t0)/tau)*Math.cos(2*Math.PI*(t-t0)/.5);
+   pts.push(X(t).toFixed(1)+','+Y(v).toFixed(1));
+  }
+  return pts.join(' ');
+ }
+ s+='<polyline points="'+curve(.25,.55)+'" fill="none" stroke="'+C[0]+'" stroke-width="2"/>';
+ s+='<polyline points="'+curve(.6,.9)+'" fill="none" stroke="'+C[2]+'" stroke-width="2"/>';
+ s+=mfT(X(.05),Y(1.05),'1.0','#8097af',9.5);
+ s+=mfL(x0,Y(1.9),x1,Y(1.9),'#ff8a75',1,'3 4');
+ s+=mfT(x1,Y(1.9)-6,'1.9 p.u. first peak','#ff8a75',9.5,'end');
+ s+=mfT(X(1.7),Y(1.3),'30 m','#5bd9ff',10,'start','600');
+ s+=mfT(X(1.7),Y(.9),'100 m','#c5a1ff',10,'start','600');
+ s+=mfT(26,282,'Illustrative Γmotor = 0.9: the first peak approaches 1.9 p.u. before the return wave settles it.','#9fb0c7',9.5);
  return s+'</svg>';
 }
 maRegister(43,{
