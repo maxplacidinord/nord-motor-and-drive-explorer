@@ -54,8 +54,9 @@ NORD-motor-and-drive-explorer.html#cables-connectors
 NORD-motor-and-drive-explorer.html#wiring
 ```
 
-The home journey also has a direct **Wiring and cables** button. Inside the chapter, use the **Section**
-selector to move between five views:
+The simplified layout also shows **Wiring & cables** as a top-level tab in the topic bar, so the chapter is
+reachable without opening the Chapters menu. The home journey has a direct **Wiring and cables** button.
+Inside the chapter, use the **Section** selector to move between five views:
 
 - **Connection chain** — separate versus hybrid routes from drive to motor, with power, brake, thermistor
   and encoder circuits.

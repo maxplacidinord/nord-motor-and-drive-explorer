@@ -8897,6 +8897,7 @@ play=function(){
 const scTopics=[
  {name:'Supply & DC',primary:8,core:[[8,'Rectifier'],[9,'DC link']],pages:[1,8,9,32,38,39]},
  {name:'Inverter',primary:28,core:[[28,'Switching circuit']],pages:[28,3,29,30,31]},
+ {name:'Wiring & cables',primary:44,core:[[44,'Wiring & cables']],pages:[44]},
  {name:'Motor & load',primary:20,core:[[20,'Motor'],[10,'Torque & load'],[42,'PM hunting']],pages:[20,24,22,27,6,25,10,4,21,13,26,42,36,37]},
  {name:'Control',primary:14,core:[[14,'Control loop']],pages:[14,11,34,35,18,23]},
  {name:'Braking',primary:7,core:[[7,'Energy flow'],[16,'Shaft brake']],pages:[7,15,33,16]},
@@ -8915,9 +8916,10 @@ const scCaptions={
  14:['How the drive controls the motor','A command goes in; the drive chooses the voltage, and feedback helps it correct the result.'],
  7:['Where braking energy goes','Follow energy from the moving load back through the drive.'],
  16:['The shaft brake has its own electrical circuit','Motor power makes torque. Power to the brake coil releases the spring-applied brake.'],
+ 44:['Wiring, cables and connectors','Follow power, brake, thermistor and encoder circuits from drive to motor, then read the connector pinout.'],
  41:['Stopping and restarting are separate actions','Remove permission, restore the conditions, then issue a fresh start command in this example.']
 };
-const scEssential={0:[],8:['supply'],9:['dcMode','supply'],28:['maSwState','maSwCurrentAngle'],20:['motorPanel','motor','frequency','connection'],10:['torque','speedrpm'],
+const scEssential={0:[],8:['supply'],9:['dcMode','supply'],28:['maSwState','maSwCurrentAngle'],44:['ccView'],20:['motorPanel','motor','frequency','connection'],10:['torque','speedrpm'],
  42:['pmHuntCase','pmHuntLoad'],14:['scControlMode'],7:['brake','speedrpm','torque'],16:['rxSupply','rxCoil','rxView'],41:[]};
 let scReady=false,scBusy=false,scPendingToggle=null;
 function scMoreOpen(){return !!$('sc-more')?.open;}
