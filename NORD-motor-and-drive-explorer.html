@@ -9103,6 +9103,22 @@ details[39].push(card('Reading the ride-through','<p>A balanced sag, an unbalanc
 details[40].push(card('Reading the stop traces','<p>A normal stop decelerates under control and reaches zero speed before torque is removed. STO removes torque immediately and leaves momentum, gravity and stored energy to do what they will. SS1-t does both in sequence: controlled deceleration first, then STO when the timer expires.</p><p>A timer is not a standstill measurement. If the load is still moving when the timer ends, STO removes the drive’s ability to stop it. The risk assessment decides whether a brake, a standstill monitor or a longer deceleration is required.</p>'+mfFig(mfChartStop(),'The same initial speed, three stop methods. The vertical line marks the moment torque is removed or the SS1-t timer starts.')));
 details[41].push(card('Reading the restart sequence','<p>Reset clears the safety latch; it does not create a start command. Restoring a guard or acknowledging a fault returns the system to “permission granted”, and the machine still waits for a fresh start edge. That separation prevents a reset from becoming an unexpected restart.</p><p>The safety path and the ordinary control path have different jobs. Safety removes torque; standard control decides whether the process should move. Keeping those responsibilities separate is what makes the restart deliberate.</p>'+mfFig(mfChartSafety(),'A generic restart sequence. The dashed return path is a new start command, not a consequence of the reset.')));
 details[42].push(card('Reading the back-EMF limit','<p>Back-EMF rises with speed, while the DC link stays roughly constant. Above base speed the inverter can no longer force current against the generated voltage unless field weakening reduces the flux. The available torque falls, and the operating point moves toward the voltage boundary.</p><p>Loss of synchronism is a dynamic problem, not just a voltage limit. Weak damping, an aggressive speed ramp or a sudden load change can make the rotor hunt or slip poles even when the steady-state voltage calculation looks acceptable.</p>'+mfFig(mfChartBackEmf(),'Illustrative back-EMF versus speed. The bus voltage is fixed; field weakening is what keeps the motor controllable above base speed.')));
+(details[5]=details[5]||[]).push(card('Reading slip','<p>Slip is the difference between synchronous speed and shaft speed, expressed as a fraction: s = (ns - n)/ns. The rotor sees the stator field at slip frequency, s·f, and that relative motion is what induces the cage current and produces torque. At no load the slip is small but never exactly zero in a real induction motor.</p><p>Slip grows with load until the breakdown torque, after which the motor stalls. A drive can control slip indirectly through voltage and frequency, but it cannot make an induction rotor run at exactly synchronous speed while still producing torque.</p>'+mfFig(mfChartTorqueSpeed(),'Torque against frequency for an ideal drive: constant torque below base speed, constant power above it.')));
+(details[6]=details[6]||[]).push(card('Reading the transform','<p>The controller measures three phase currents, converts them to a two-axis stationary frame with the Clarke transform, then rotates that frame with the Park transform using the rotor angle. In the rotating frame, one current component controls flux and the other controls torque.</p><p>The angle is the weak link: an encoder measures it directly, while a sensorless drive estimates it. A small angle error mixes flux and torque current, so the same current produces less torque and more loss.</p>'+mfFig(mfFigChain('From phase currents to torque',[['Measure','ia, ib, ic',C[0]],['Clarke','alpha, beta',C[1]],['Park','id, iq',C[2]],['Control','torque and flux',G]],'The transforms are bookkeeping: the physical currents remain three-phase.'))));
+(details[7]=details[7]||[]).push(card('Reading the braking energy','<p>Braking converts kinetic energy into something else: heat in a resistor, charge in the DC link, energy returned to the supply, or heat in the motor and friction. The choice is a system decision, not a drive setting in isolation.</p><p>A resistor must absorb both the peak power and the total energy of the stop, and it must survive the repetition rate. A regenerative front end needs a bidirectional path and a supply that accepts the energy.</p>'+mfFig(mfChartBrakeEnergy(),'The braking-energy ledger: the capacitor is a buffer, the resistor and friction are the usual destinations.')));
+(details[8]=details[8]||[]).push(card('Reading the rectifier pulses','<p>The diode bridge connects the highest and lowest supply phases to the DC rails. Current flows in short pulses when the rectified supply exceeds the capacitor voltage, so the input current is far from sinusoidal even with a clean supply.</p><p>The pulse width depends on load, capacitance and source impedance. A DC choke or an active front end changes the shape; a simple capacitor-input bridge always has a high peak-to-average current ratio.</p>'+mfFig(mfChartDcLink(),'Rectifier pulses charge the link in short bursts; the inverter draws a different pulse pattern.')));
+(details[9]=details[9]||[]).push(card('Reading precharge','<p>At the first instant the DC-link capacitor is empty, so the only limit on current is the precharge resistor and the source impedance. The voltage rises exponentially with time constant RC, and the resistor sees its highest power at t = 0.</p><p>The bypass contactor closes when the capacitor is nearly charged; closing too early creates a second inrush, and never closing leaves the resistor in circuit. The 60-second rule gives the resistor time to cool between attempts.</p>'+mfFig(mfChartPrecharge(),'Precharge voltage in RC units. The resistor must survive the first pulse, not just the steady state.')));
+(details[10]=details[10]||[]).push(card('Reading torque and power','<p>Mechanical power is torque times angular speed. Below base speed the drive can hold torque constant while power rises with speed; above base speed the voltage ceiling forces torque to fall so that power stays roughly constant.</p><p>The same distinction explains why a gearbox is useful: it trades speed for torque without changing power, apart from efficiency. The motor and the load see different speeds and torques, but the power balance still holds.</p>'+mfFig(mfChartTorqueSpeed(),'Constant torque below base speed, constant power above it. The transition is set by the voltage ceiling.')));
+(details[11]=details[11]||[]).push(card('Reading the rotating frame','<p>The Clarke transform combines three phase currents into two stationary axes. The Park transform then rotates those axes by the rotor angle, so a sinusoidal current in the stator becomes a constant value in the rotating frame. That is what makes a simple PI controller possible.</p><p>The angle must be correct. An error mixes the flux and torque components: the same current produces less torque, more loss, and a controller that appears to be working while the machine is not.</p>'+mfFig(mfFigChain('From three phases to two rotating axes',[['Three phases','ia, ib, ic',C[0]],['Clarke','alpha, beta',C[1]],['Park','id, iq',C[2]]],'The transforms are bookkeeping; the physical currents remain three-phase.'))));
+(details[12]=details[12]||[]).push(card('Reading the 50 / 87 / 100 Hz envelopes','<p>The base frequency sets where voltage reaches its ceiling. A 87 Hz characteristic usually uses a delta connection to keep the V/f ratio while raising the base speed; 100 Hz needs a motor specifically rated for it, with lower constant torque.</p><p>These are motor ratings, not universal drive settings. Insulation, bearings, cooling and the driven load all limit how far the base frequency can be raised.</p>'+mfFig(mfChartVf(),'The ideal V/f line and the base point. Above base speed, flux and available torque fall.')));
+(details[13]=details[13]||[]).push(card('Reading the gearbox','<p>A gearbox changes speed and torque in inverse proportion, minus efficiency. A 10:1 reduction turns 1500 rpm into 150 rpm and multiplies torque by about ten, which is why a small motor can move a heavy load slowly.</p><p>The gearbox also adds inertia, backlash, lubrication and its own losses. The motor must still supply the reflected torque and accelerate the reflected inertia, so the ratio is a system choice rather than a free gain.</p>'+mfFig(mfFigChain('Speed down, torque up',[['Motor','1500 rpm',C[0]],['Gearbox','10:1',C[1]],['Load','150 rpm, more torque',G]],'The gearbox trades speed for torque; power is conserved apart from losses.'))));
+(details[14]=details[14]||[]).push(card('Reading the bridge','<p>Six switches form three legs. Each leg connects its output to the positive or negative rail, and the antiparallel diode carries current when the switch is off and the current direction requires it. The load sees the difference between two leg voltages.</p><p>Dead time prevents both switches in a leg from conducting at once, but it also distorts the output at low current. The bridge is a set of constraints, not an ideal voltage source.</p>'+mfFig(mfChartHexagon(),'The six active states and the zero states. Each edge changes one leg; the centre is zero line voltage.')));
+(details[15]=details[15]||[]).push(card('Reading the chopper','<p>The chopper compares the DC-link voltage with a band. Below the lower threshold it stays off; above the upper threshold it switches the resistor in and out to hold the bus. The resistor sees pulses, so both peak power and average energy matter.</p><p>Power and energy are separate checks: a resistor rated for the peak power may still overheat on a long stop, and one rated for the average may fail on a short pulse.</p>'+mfFig(mfChartChopper(),'The chopper holds the bus inside its band by dumping the excess into the resistor.')));
+(details[16]=details[16]||[]).push(card('Reading the brake trace','<p>A mechanical brake is a holding device, not a controlled decelerator. There is a delay between the command and torque, and the torque may not be enough to stop a moving load before it reaches a limit. The brake removes energy as heat and wear.</p><p>Release is also part of the cycle: the brake must open before the motor can move, and a stuck or slow release can overload the drive. Check the air gap, the release voltage and the control sequence.</p>'+mfFig(mfChartBrake(),'Command, torque and speed do not change at the same instant. The gap is where motion and wear happen.')));
+(details[18]=details[18]||[]).push(card('Reading the tuning step','<p>A current-loop step shows how fast the drive reaches the requested current and how much it overshoots. A speed-loop step adds inertia: the speed responds more slowly, and the current saturates during the ramp. Tuning one loop affects the other.</p><p>There is no universal “best” response. A fast loop improves disturbance rejection but reduces stability margin; a slow loop is robust but may not hold the process. The acceptable result depends on the machine and the load.</p>'+mfFig(mfChartStep(),'A faster loop reaches the setpoint sooner but overshoots more. The shape matters more than a single settling number.')));
+(details[20]=details[20]||[]).push(card('Reading the motor families','<p>An induction motor needs slip to produce torque; a PM motor runs synchronously and needs rotor position; a reluctance motor uses a shaped iron path and no magnets. The terminal box looks similar, but the control model and the tests are different.</p><p>The nameplate is the first check, not the last. Measure resistance and inductance, check for magnet attraction and back-EMF, and confirm the encoder or resolver before applying a control mode.</p>'+mfFig(mfChartRotors(),'Four rotor families. The stator field is similar; the rotor decides how torque is produced.')));
+(details[21]=details[21]||[]).push(card('Reading the DOL curve','<p>A direct-on-line induction motor starts at zero speed with a high current and a starting torque set by the rotor design. As speed rises, torque follows the curve to a pull-out peak, then falls to the operating point. The slip at the operating point is small but not zero.</p><p>A drive can start the same motor with a controlled current and a different torque profile, but it cannot exceed the motor’s thermal and magnetic limits. The DOL curve is still the reference for what the motor can do.</p>'+mfFig(mfChartTorqueSpeed(),'The ideal torque-speed shape: starting torque, pull-out peak and the stable operating region.')));
+(details[22]=details[22]||[]).push(card('Reading induction','<p>The stator field rotates at synchronous speed. The rotor runs slightly slower, so the field cuts the cage bars and induces a current. That current in the rotor field produces torque. No slip means no rotor current and no torque.</p><p>The slip frequency is small at full speed but the rotor resistance and reactance still shape the current. That is why rotor heating, deep-bar effects and temperature all change the torque curve.</p>'+mfFig(mfChartSlip(),'Torque versus slip: the stable operating region is on the rising side, before the breakdown peak.')));
 /* Field evidence photographs (resized for embedding).
    Burnt motor interior: K.kudelina, CC BY 4.0, via Wikimedia Commons.
    Squirrel-cage rotor: Zureks, CC BY-SA 3.0, via Wikimedia Commons. */
@@ -10252,6 +10268,150 @@ function mfChartBackEmf(){
  s+=mfT(X(4300),Y(300),'back-EMF','#ffc475',10,'start','600');
  s+=mfT(X(5400),Y(250),'field weakening','#dbe6ef',10,'start');
  s+=mfT(26,282,'Illustrative 0.11 V/rpm line-line: the bus can no longer force current once back-EMF exceeds it.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartPrecharge(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=t=>x0+t/5*(x1-x0),Y=v=>y1-v*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Precharge voltage versus time in RC units">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Precharge is a race against the resistor','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let t=0;t<=5;t++){s+=mfL(X(t),y1,X(t),y1+5,'#3b556e',1);s+=mfT(X(t),y1+19,t+' RC','#8097af',9,'middle');}
+ for(let v=0;v<=1;v+=.25){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,(v*100)+'%','#8097af',9,'end');}
+ let pts=[];
+ for(let t=0;t<=5;t+=.02)pts.push(X(t).toFixed(1)+','+Y(1-Math.exp(-t)).toFixed(1));
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ [[1,.632],[3,.95],[5,.993]].forEach(a=>{
+  s+='<circle cx="'+X(a[0]).toFixed(1)+'" cy="'+Y(a[1]).toFixed(1)+'" r="4" fill="'+L+'"/>';
+  s+=mfT(X(a[0])+6,Y(a[1])-8,(a[1]*100).toFixed(1)+'%','#dbe6ef',9.5,'start');
+ });
+ s+=mfT(26,282,'The resistor must survive the first pulse and the repetition rate; the bypass must close at the right moment.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartTorqueSpeed(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=f=>x0+f/100*(x1-x0),Y=t=>y1-t/120*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Constant torque and constant power regions">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Constant torque, then constant power','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let f=0;f<=100;f+=20){s+=mfL(X(f),y1,X(f),y1+5,'#3b556e',1);s+=mfT(X(f),y1+19,f+' Hz','#8097af',9,'middle');}
+ for(let t=0;t<=120;t+=20){s+=mfL(x0,Y(t),x1,Y(t),'#22384d',1);s+=mfT(x0-8,Y(t)+4,t+'%','#8097af',9,'end');}
+ s+='<polyline points="'+X(0)+','+Y(100)+' '+X(50)+','+Y(100)+' '+X(100)+','+Y(50)+'" fill="none" stroke="'+L+'" stroke-width="2.6"/>';
+ s+=mfL(X(50),y0,X(50),y1,'#55708a',1,'4 4');
+ s+=mfT(X(50),y0-6,'base','#8097af',9,'middle');
+ s+=mfT(X(25),Y(110),'constant torque','#9fb0c7',10,'middle');
+ s+=mfT(X(75),Y(85),'constant power','#ffc475',10,'middle');
+ s+=mfT(26,282,'Ideal curve: torque is limited by current below base speed and by voltage above it.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartEncoder(){
+ const x0=60,x1=660,per=120;
+ function square(y,shift){
+  let pts=[];
+  for(let x=x0;x<=x1;x+=2){
+   const t=((x-x0-shift)%per+per)%per;
+   pts.push(x+','+(t<per/2?y-18:y));
+  }
+  return '<polyline points="'+pts.join(' ')+'" fill="none" stroke-width="2.2"/>';
+ }
+ let s='<svg viewBox="0 0 720 262" role="img" aria-label="Quadrature encoder A, B and index signals">';
+ s+='<rect width="720" height="262" fill="#0b1724"/>';
+ s+=mfT(26,32,'Quadrature gives direction, not just speed','#e8f1f8',16,'start','600');
+ s+=mfT(26,84,'A','#5bd9ff',11,'start','600');
+ s+=mfT(26,144,'B','#ffc475',11,'start','600');
+ s+=mfT(26,204,'Z','#c5a1ff',11,'start','600');
+ s+=square(100,0).replace('fill="none"','stroke="'+C[0]+'" fill="none"');
+ s+=square(160,30).replace('fill="none"','stroke="'+C[1]+'" fill="none"');
+ s+='<rect x="'+ (x0+3*per) +'" y="180" width="10" height="18" fill="'+C[2]+'"/>';
+ s+=mfL(x0,220,x1,220,'#3b556e',1.2);
+ s+=mfT(360,244,'A and B are 90° apart; the index Z marks one revolution.','#9fb0c7',9.5,'middle');
+ return s+'</svg>';
+}
+function mfChartStep(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=t=>x0+t*(x1-x0),Y=v=>y1-v/1.4*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Current-loop step response with overshoot">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Tuning is a trade between speed and overshoot','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let t=0;t<=1;t+=.25){s+=mfL(X(t),y1,X(t),y1+5,'#3b556e',1);s+=mfT(X(t),y1+19,t.toFixed(2)+' s','#8097af',9,'middle');}
+ for(let v=0;v<=1.4;v+=.2){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,v.toFixed(1),'#8097af',9,'end');}
+ let pts=[];
+ for(let t=0;t<=1;t+=.002)pts.push(X(t).toFixed(1)+','+Y(1-Math.exp(-t/.12)*Math.cos(2*Math.PI*t/.28)).toFixed(1));
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.4"/>';
+ s+=mfL(x0,Y(1),x1,Y(1),'#55708a',1,'4 4');
+ s+=mfT(x1,Y(1)-6,'1.0','#8097af',9.5,'end');
+ s+=mfT(26,282,'A faster loop reaches the setpoint sooner but overshoots more; the acceptable result depends on the machine.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartChopper(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=t=>x0+t/3*(x1-x0),Y=v=>y1-(v-650)/130*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="DC-link voltage and brake-chopper band">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'The chopper burns what the capacitor cannot hold','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let t=0;t<=3;t+=.5){s+=mfL(X(t),y1,X(t),y1+5,'#3b556e',1);s+=mfT(X(t),y1+19,t.toFixed(1)+' s','#8097af',9,'middle');}
+ for(let v=650;v<=780;v+=20){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,v+' V','#8097af',9,'end');}
+ let pts=[];
+ for(let t=0;t<=3;t+=.005){
+  let v=700;
+  if(t>.5&&t<2.2)v=700+((t*10)%1)*50;
+  if(t>=2.2)v=700+50*Math.exp(-(t-2.2)/.3);
+  pts.push(X(t).toFixed(1)+','+Y(v).toFixed(1));
+ }
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.2"/>';
+ s+=mfL(x0,Y(700),x1,Y(700),'#55708a',1,'4 4');
+ s+=mfL(x0,Y(750),x1,Y(750),'#ff8a75',1,'4 4');
+ s+=mfT(x1,Y(750)-6,'750 V trip','#ff8a75',9.5,'end');
+ s+=mfT(x1,Y(700)-6,'700 V chopper on','#8097af',9.5,'end');
+ s+=mfT(26,282,'The chopper switches the resistor to hold the bus inside its band; the resistor turns the difference into heat.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartBrake(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=t=>x0+t/3*(x1-x0),Y=v=>y1-v/110*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Speed and brake torque during a mechanical stop">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'A holding brake is not a controlled decelerator','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let t=0;t<=3;t+=.5){s+=mfL(X(t),y1,X(t),y1+5,'#3b556e',1);s+=mfT(X(t),y1+19,t.toFixed(1)+' s','#8097af',9,'middle');}
+ for(let v=0;v<=100;v+=20){s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);s+=mfT(x0-8,Y(v)+4,v+'%','#8097af',9,'end');}
+ function line(fn){let p=[];for(let t=0;t<=3;t+=.01)p.push(X(t).toFixed(1)+','+Y(fn(t)).toFixed(1));return '<polyline points="'+p.join(' ')+'" fill="none" stroke-width="2.2"/>';}
+ s+=line(t=>t<.3?100:100*Math.exp(-(t-.3)/.7)).replace('fill="none"','stroke="'+L+'" fill="none"');
+ s+=line(t=>t<.5?0:80*Math.exp(-(t-.5)/1.4)).replace('fill="none"','stroke="'+C[1]+'" fill="none" stroke-dasharray="6 4"');
+ s+=mfL(X(.3),y0,X(.3),y1,'#55708a',1,'4 4');
+ s+=mfT(X(.3),y0-6,'command','#8097af',9,'middle');
+ s+=mfT(X(.5),y0-6,'torque applied','#8097af',9,'middle');
+ s+=mfT(X(2.1),Y(30),'speed','#b7f568',10,'start');
+ s+=mfT(X(2.1),Y(52),'brake torque','#ffc475',10,'start');
+ s+=mfT(26,282,'The delay between command and torque is lost motion; the brake then removes energy as heat and wear.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartSlip(){
+ const x0=80,x1=650,y0=60,y1=230;
+ const X=s=>x0+s*(x1-x0),Y=t=>y1-t/250*(y1-y0);
+ let s='<svg viewBox="0 0 720 296" role="img" aria-label="Induction-motor torque versus slip">';
+ s+='<rect width="720" height="296" fill="#0b1724"/>';
+ s+=mfT(26,32,'Induction torque needs slip','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ for(let v=0;v<=1;v+=.2){s+=mfL(X(v),y1,X(v),y1+5,'#3b556e',1);s+=mfT(X(v),y1+19,(v*100)+'%','#8097af',9,'middle');}
+ for(let t=0;t<=250;t+=50){s+=mfL(x0,Y(t),x1,Y(t),'#22384d',1);s+=mfT(x0-8,Y(t)+4,t+'%','#8097af',9,'end');}
+ let pts=[];
+ for(let v=0;v<=1;v+=.005){const r=v/.2;const T=2*200*r/(1+r*r);pts.push(X(v).toFixed(1)+','+Y(T).toFixed(1));}
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.4"/>';
+ s+='<circle cx="'+X(.03).toFixed(1)+'" cy="'+Y(2*200*(.03/.2)/(1+Math.pow(.03/.2,2))).toFixed(1)+'" r="4" fill="'+G+'"/>';
+ s+=mfT(X(.03)+8,Y(60),'operating slip','#b7f568',9.5,'start');
+ s+=mfT(X(.2),Y(205),'breakdown','#ffc475',9.5,'middle');
+ s+=mfT(26,282,'Illustrative curve: torque rises with slip, peaks, then collapses. A drive keeps the operating point on the stable side.','#9fb0c7',9.5);
  return s+'</svg>';
 }
 maRegister(43,{
