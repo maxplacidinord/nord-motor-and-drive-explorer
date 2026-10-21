@@ -260,6 +260,7 @@ window.addEventListener("hashchange", function(event) {
  #lesson-notes .detail-card img{max-width:100%;height:auto;border-radius:10px;border:1px solid #2b4056}
  #lesson-notes .detail-card figure{display:block;margin:26px 0;padding:0}
  #lesson-notes .detail-card figure img{display:block;width:100%}
+ #lesson-notes .detail-card figure svg{display:block;width:100%;height:auto;border-radius:10px;border:1px solid #2b4056;background:#0b1724}
  #lesson-notes .detail-card figcaption{margin:9px 0 0;font-size:13px;line-height:1.65;color:#93a9bd}
  #lesson-notes .detail-card .formula{display:block;margin:18px 0;padding:12px 15px;border-left:3px solid #b7f568;border-radius:6px;background:#0c1926;font-size:15px!important;line-height:1.7!important;color:#e2edf6!important;overflow-x:auto}
  #lesson-notes .detail-card table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
@@ -9491,6 +9492,208 @@ function mfWrap(text,max){
  if(line)out.push(line);
  return out;
 }
+function mfT(x,y,t,fill,size,anchor,weight){
+ return '<text x="'+x+'" y="'+y+'" fill="'+fill+'" text-anchor="'+(anchor||'start')+'" style="font-size:'+size+'px;font-family:system-ui,Segoe UI,sans-serif;font-weight:'+(weight||'400')+'">'+t+'</text>';
+}
+function mfL(x1,y1,x2,y2,stroke,w,dash){
+ return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+stroke+'" stroke-width="'+(w||1)+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';
+}
+function mfFig(svg,caption){return '<figure class="mf-figure">'+svg+'<figcaption>'+caption+'</figcaption></figure>';}
+function mfChartFamilies(){
+ const rows=[['Bearings',40,50,45,C[0]],['Stator',30,40,35,C[1]],['Rotor',5,10,8,C[2]],['Shaft',2,5,4,G],['Application',5,15,8,'#d8c98d']];
+ const x0=200,x1=660,max=60,y0=96,dy=39;
+ let s='<svg viewBox="0 0 720 300" role="img" aria-label="Published failure shares by family">';
+ s+='<rect width="720" height="300" fill="#0b1724"/>';
+ s+=mfT(26,34,'Where failures come from','#e8f1f8',16,'start','600');
+ s+=mfT(26,54,'published ranges, midpoint marked','#9fb0c7',11);
+ for(let v=0;v<=60;v+=10){
+  const x=x0+(x1-x0)*v/max;
+  s+=mfL(x,74,x,262,'#22384d',1);
+  s+=mfT(x,281,String(v),'#8097af',9.5,'middle');
+ }
+  rows.forEach((r,i)=>{
+  const y=y0+i*dy;
+  s+=mfT(26,y+4,r[0],'#dbe6ef',12.5);
+  const lo=x0+(x1-x0)*r[1]/max,hi=x0+(x1-x0)*r[2]/max,mid=x0+(x1-x0)*r[3]/max;
+  s+='<rect x="'+x0+'" y="'+(y-5)+'" width="'+(x1-x0)+'" height="10" rx="5" fill="#16283a"/>';
+  s+='<rect x="'+lo.toFixed(1)+'" y="'+(y-5)+'" width="'+(hi-lo).toFixed(1)+'" height="10" rx="5" fill="'+r[4]+'" opacity=".55"/>';
+  s+='<circle cx="'+mid.toFixed(1)+'" cy="'+y+'" r="4.2" fill="'+r[4]+'"/>';
+  s+=mfT(714,y+4,r[1]+'–'+r[2]+' %','#9fb0c7',10.5,'end');
+ });
+ return s+'</svg>';
+}
+function mfChartProgression(){
+ const stages=[['HEALTHY','signature at baseline',G,'0–20 %'],['WATCH','trend leaves baseline','#ffc475','20–50 %'],['ALARM','protection warns','#ff9d5c','50–90 %'],['TRIP','drive stops','#ff6f52','100 %']];
+ let s='<svg viewBox="0 0 720 208" role="img" aria-label="Damage progression from healthy to trip">';
+ s+='<rect width="720" height="208" fill="#0b1724"/>';
+ s+=mfT(26,32,'The sequence the stage compresses','#e8f1f8',16,'start','600');
+ s+=mfL(80,112,640,112,'#2f465d',2);
+ const xs=[90,270,450,630];
+ xs.forEach((x,i)=>{
+  s+='<circle cx="'+x+'" cy="112" r="16" fill="#0b1724" stroke="'+stages[i][2]+'" stroke-width="3"/>';
+  s+=mfT(x,117,String(i+1),stages[i][2],13,'middle','700');
+  s+=mfT(x,74,stages[i][0],stages[i][2],11.5,'middle','600');
+  s+=mfT(x,154,stages[i][1],'#9fb0c7',10.5,'middle');
+  s+=mfT(x,182,stages[i][3],'#8097af',10.5,'middle');
+ });
+ for(let i=0;i<3;i++)s+=mfL(xs[i]+18,112,xs[i+1]-18,112,'#55708a',1.5,'4 4');
+ return s+'</svg>';
+}
+function mfChartSpectrum(){
+ let s='<svg viewBox="0 0 720 452" role="img" aria-label="Illustrative vibration and current spectra">';
+ s+='<rect width="720" height="452" fill="#0b1724"/>';
+ const x0=64,x1=676,fmax=120,fx=f=>x0+(x1-x0)*f/fmax;
+ s+=mfT(26,34,'Separate the two domains before reading peaks','#e8f1f8',16,'start','600');
+ const panels=[
+  {y0:82,y1:200,title:'Vibration velocity',peaks:[[24.6,44,C[0],'1× 24.6'],[49.2,30,C[0],'2× 49.2'],[79,62,L,'BPFO 79']]},
+  {y0:286,y1:396,title:'Motor current (MCSA)',peaks:[[48.3,18,'#ffc475',''],[50,54,C[1],'50 Hz'],[51.7,18,'#ffc475',''],[100,24,'#c5a1ff','2fl 100']]}
+ ];
+ panels.forEach(p=>{
+  s+=mfT(x0,p.y0-14,p.title,'#dbe6ef',12,'start','600');
+  s+=mfL(x0,p.y1,x1,p.y1,'#3b556e',1.2);
+  for(let f=0;f<=100;f+=25){
+   s+=mfL(fx(f),p.y1,fx(f),p.y1+5,'#3b556e',1);
+   s+=mfT(fx(f),p.y1+18,String(f),'#8097af',9,'middle');
+  }
+  s+=mfT(x1+2,p.y1+18,'Hz','#8097af',9,'end');
+  p.peaks.forEach(pk=>{
+   const x=fx(pk[0]);
+   s+=mfL(x,p.y1,x,p.y1-pk[1],pk[2],2.4);
+   s+='<circle cx="'+x.toFixed(1)+'" cy="'+(p.y1-pk[1])+'" r="2.6" fill="'+pk[2]+'"/>';
+   if(pk[3])s+=mfT(x,p.y1-pk[1]-7,pk[3],pk[2],9.5,'middle');
+  });
+ });
+ const sx1=fx(48.3),sx2=fx(51.7);
+ s+=mfL(sx1,306,sx2,306,'#ffc475',1.2);
+ s+=mfL(sx1,306,sx1,314,'#ffc475',1.2);
+ s+=mfL(sx2,306,sx2,314,'#ffc475',1.2);
+ s+=mfL(sx1,314,sx1,378,'#ffc475',.8,'2 3');
+ s+=mfL(sx2,314,sx2,378,'#ffc475',.8,'2 3');
+ s+=mfL(sx2+4,306,fx(66),306,'#ffc475',1,'3 3');
+ s+=mfT(fx(67),309,'f(1 ± 2s), spacing 2s ≈ 1.7 Hz','#ffc475',9.5);
+ s+=mfT(26,446,'Illustrative peaks; amplitudes are relative, not measured.','#8097af',9.5);
+ return s+'</svg>';
+}
+function mfChartLife(){
+ const x0=80,x1=670,y0=70,y1=246;
+ const X=t=>x0+(t-120)/80*(x1-x0),Y=l=>y1-Math.min(l,8)/8*(y1-y0);
+ let s='<svg viewBox="0 0 720 302" role="img" aria-label="Insulation life versus hot-spot temperature">';
+ s+='<rect width="720" height="302" fill="#0b1724"/>';
+ s+=mfT(26,32,'Life is a thermal budget','#e8f1f8',16,'start','600');
+ for(let t=120;t<=200;t+=20){
+  s+=mfL(X(t),y0,X(t),y1,'#22384d',1);
+  s+=mfT(X(t),y1+18,String(t),'#8097af',9.5,'middle');
+ }
+ for(let l=0;l<=8;l+=2){
+  s+=mfL(x0,Y(l),x1,Y(l),'#22384d',1);
+  s+=mfT(x0-12,Y(l)+4,String(l),'#8097af',9.5,'end');
+ }
+ let pts=[];
+ for(let t=120;t<=200;t+=2)pts.push(X(t).toFixed(1)+','+Y(Math.pow(2,(155-t)/10)).toFixed(1));
+ s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+L+'" stroke-width="2.4"/>';
+ [[145,2],[155,1],[165,.5]].forEach(a=>{
+  const x=X(a[0]),y=Y(a[1]);
+  s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" fill="'+L+'"/>';
+  const dx=a[0]===155?-6:a[0]===165?6:0;
+  const an=a[0]===155?'end':a[0]===165?'start':'middle';
+  s+=mfT(x+dx,y-(a[0]===165?26:10),a[0]+' °C · '+a[1].toFixed(2)+'×','#dbe6ef',10,an);
+ });
+ s+=mfT(26,294,'Montsinger approximation, 10 K per halving, Class F reference 155 °C.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartUnbalance(){
+ const x0=80,x1=660,y0=70,y1=240;
+ const X=u=>x0+u/5*(x1-x0),Y=v=>y1-(v-.7)/.3*(y1-y0);
+ let s='<svg viewBox="0 0 720 300" role="img" aria-label="NEMA voltage-unbalance derating">';
+ s+='<rect width="720" height="300" fill="#0b1724"/>';
+ s+=mfT(26,32,'Voltage unbalance is silent derating','#e8f1f8',16,'start','600');
+ for(let u=0;u<=5;u++){
+  s+=mfL(X(u),y0,X(u),y1,'#22384d',1);
+  s+=mfT(X(u),y1+18,u+' %','#8097af',9.5,'middle');
+ }
+ for(let v=.7;v<=1.001;v+=.1){
+  s+=mfL(x0,Y(v),x1,Y(v),'#22384d',1);
+  s+=mfT(x0-12,Y(v)+4,v.toFixed(1),'#8097af',9.5,'end');
+ }
+ s+=mfT(26,50,'derating factor','#8097af',9.5);
+ const pts=[[0,1],[1,.98],[2,.95],[3,.88],[5,.75]];
+ s+='<polyline points="'+pts.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="'+'#ff9d5c" stroke-width="2.6"/>';
+ pts.forEach(p=>{
+  s+='<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="3.8" fill="#ff9d5c"/>';
+ });
+ s+=mfT(X(3),Y(.88)-12,'0.88 at 3 %','#dbe6ef',10,'middle');
+ s+=mfT(X(5),Y(.75)-12,'0.75 at 5 %','#dbe6ef',10,'middle');
+ s+=mfT(26,292,'NEMA MG 1 guidance; the temperature-rise penalty is separate and grows with the square.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
+function mfChartChain(){
+ const nodes=[['Misalignment',G],['Bearing load','#c9e88a'],['Heat','#ffc475'],['Grease failure','#ff9d5c'],['Seizure','#ff8a75'],['Rotor rub','#ff6f52']];
+ const w=96,gap=14,x0=36,y=74,h=54;
+ let s='<svg viewBox="0 0 720 176" role="img" aria-label="Typical failure chain from misalignment to rotor rub">';
+ s+='<rect width="720" height="176" fill="#0b1724"/>';
+ s+=mfT(26,34,'A typical chain: the bearing is the end, not the start','#e8f1f8',16,'start','600');
+ nodes.forEach((n,i)=>{
+  const x=x0+i*(w+gap);
+  s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="9" fill="#122132" stroke="'+n[1]+'"/>';
+  s+=mfT(x+w/2,y+32,n[0],'#dbe6ef',10.5,'middle','600');
+  if(i<nodes.length-1)s+=mfT(x+w+7,y+33,'›','#55708a',16,'middle');
+ });
+ s+=mfT(26,150,'Replace the part and the chain stays intact; fix the condition and it breaks.','#9fb0c7',10.5);
+ return s+'</svg>';
+}
+function mfChartTests(){
+ const cols=[
+  ['Vibration',C[0],['Velocity spectrum','Envelope demodulation','Phase & alignment']],
+  ['Current',C[1],['MCSA under load','Winding resistance','Surge comparison']],
+  ['Temperature',C[2],['IR / PI','Airflow & filters','Power-quality log']]
+ ];
+ const w=190,x=[65,265,465];
+ let s='<svg viewBox="0 0 720 286" role="img" aria-label="Choosing a confirming test from the first symptom">';
+ s+='<rect width="720" height="286" fill="#0b1724"/>';
+ s+=mfT(26,32,'Use the channel that moved first','#e8f1f8',16,'start','600');
+ s+='<rect x="290" y="42" width="140" height="40" rx="8" fill="#20362a" stroke="'+L+'"/>';
+ s+=mfT(360,67,'Symptom','#dbe6ef',13,'middle','600');
+ cols.forEach((c,i)=>{
+  const cx=x[i]+w/2;
+  s+=mfL(360,82,cx,112,'#55708a',1.3);
+  s+='<rect x="'+x[i]+'" y="112" width="'+w+'" height="34" rx="7" fill="#122132" stroke="'+c[1]+'"/>';
+  s+=mfT(cx,134,c[0],c[1],12,'middle','600');
+  c[2].forEach((t,j)=>{
+   const y=158+j*38;
+   s+='<rect x="'+x[i]+'" y="'+y+'" width="'+w+'" height="28" rx="6" fill="#0f1e2d" stroke="#2b4056"/>';
+   s+=mfT(cx,y+19,t,'#b9cadb',10.5,'middle');
+   s+=mfL(cx,j===0?146:y-10,cx,y,'#2b4056',1.2);
+  });
+ });
+ s+=mfT(26,276,'Confirm offline before opening the machine; a test without a baseline is hard to read.','#9fb0c7',10);
+ return s+'</svg>';
+}
+function mfChartWeibull(){
+ const x0=80,x1=650,y0=60,y1=220;
+ const X=t=>x0+t*(x1-x0),Y=v=>y1-Math.min(v,3)/3*(y1-y0);
+ const curves=[
+  ['β < 1 · infant mortality','#ff9d5c',t=>.7*Math.pow(t||.02,-.3)],
+  ['β = 1 · random','#ffc475',t=>1],
+  ['β > 1 · wear-out',L,t=>2.5*Math.pow(t,1.5)]
+ ];
+ let s='<svg viewBox="0 0 720 274" role="img" aria-label="Weibull shape and the matching intervention">';
+ s+='<rect width="720" height="274" fill="#0b1724"/>';
+ s+=mfT(26,32,'Weibull shape tells you which intervention fits','#e8f1f8',16,'start','600');
+ s+=mfL(x0,y1,x1,y1,'#3b556e',1.2);
+ s+=mfL(x0,y0,x0,y1,'#3b556e',1.2);
+ s+=mfT(x1,y1+18,'time','#8097af',9.5,'end');
+
+ curves.forEach(c=>{
+  let pts=[];
+  for(let t=.02;t<=1.0001;t+=.02)pts.push(X(t).toFixed(1)+','+Y(c[2](t)).toFixed(1));
+  s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+c[1]+'" stroke-width="2.2"/>';
+ });
+ [[.18,.78,'β < 1','#ff9d5c'],[.55,.42,'β = 1','#ffc475'],[.78,.22,'β > 1',L]].forEach(a=>{
+  s+=mfT(x0+30+a[0]*(x1-x0-60),y0+20+a[1]*140,a[2],a[3],10.5,'start','600');
+ });
+ s+=mfT(26,258,'Below 1: infant mortality. Near 1: random. Above 1: wear-out.','#9fb0c7',9.5);
+ return s+'</svg>';
+}
 maRegister(43,{
  slug:'motor-failure',
  nav:'Motor failure',
@@ -9516,16 +9719,16 @@ maRegister(43,{
  },
  draw:mfDraw,
  details:[
-  card('The five families at a glance','<p><strong>Bearings (40–50 %)</strong> — fatigue, contamination, lubrication and shaft currents. <strong>Stator winding and insulation (30–40 %)</strong> — thermal ageing, partial discharge, contamination and inverter overvoltage. <strong>Rotor (5–10 %)</strong> — bar and end-ring fatigue, eccentricity, magnets. <strong>Shaft and coupling (2–5 %)</strong> — misalignment, unbalance, resonance, overhung load. <strong>Application and environment (5–15 %)</strong> — cooling, moisture, supply quality and protection settings.</p><p>The ranges overlap because a bearing that fails from shaft current is an electrical failure, and a winding that fails from blocked cooling is a maintenance failure. Component statistics describe where the damage ended.</p>'),
-  card('Reading the stage','<p>The cabinet is the drive; the circle is the motor seen from the shaft end. Each family moves differently on purpose: a bearing fault rattles fast with impact rings at the bearing; a stator fault barely shakes the frame but arcs, chars coils and smokes; a rotor fault runs rough with a speed wobble and a hot bar; a shaft fault swings in a slow orbit; a cooling fault only slows the fan and heats the winding.</p><p>The right-hand panel shows accumulated damage, estimated time to trip, the protection code and the five spectrum positions where the fault appears. The traces are a rolling window: vibration in mm/s, motor current in A, winding temperature in °C. On a real machine vibration and current would be sampled at kilohertz; here they are shaped by the damage level so the pattern is visible.</p>'),
-  card('Reading the spectrum signature','<p>The bars show where energy appears, not calibrated amplitudes. <strong>1×</strong> is once per revolution — unbalance, eccentricity, a loose rotor. <strong>2×</strong> is twice per revolution — misalignment, coupling geometry, soft foot. <strong>BPFO</strong> is the ball-pass frequency of the outer race, with harmonics — a race defect. <strong>f(1 ± 2s)</strong> are current sidebands around the supply frequency, spaced by twice the slip — the rotor-bar signature. <strong>2fl</strong> is twice line frequency — negative-sequence current, static eccentricity, winding asymmetry. The dominant bar for the selected family is outlined in lime; hover a bar for its meaning.</p><p>Worked example, 4-pole motor at 1475 rpm on 50 Hz, slip s ≈ 1.7 %: 1× = 24.6 Hz, 2× = 49.2 Hz, BPFO ≈ (Nb/2)(1 − d/D cos α)·fr ≈ 3.2 × 24.6 ≈ 79 Hz for eight balls with d/D cos α ≈ 0.2, f(1 ± 2s) = 50 ± 1.7 Hz, and 2fl = 100 Hz.</p><p>Bearing defects are easiest to see in an envelope spectrum, not the raw velocity spectrum. Real machines show several signatures at once; the diagnostic question is which one appeared first and how it grows with load.</p>'),
-  card('Field evidence','<p>Two teardown photographs show what the signatures look like after the fact. Heat leaves colour and smell; a cracked rotor bar leaves a current signature long before it is visible.</p><figure><img src="'+mfPhotos.burnt+'" alt="Interior of an overheated motor with darkened stator windings"><figcaption>Overheated stator: varnish carbonised, windings discoloured and brittle. Photo: K.kudelina, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, via Wikimedia Commons.</figcaption></figure><figure><img src="'+mfPhotos.rotor+'" alt="Squirrel-cage rotor with bars and end ring"><figcaption>Squirrel-cage rotor: bars and end ring are one casting. A cracked bar changes the current signature long before it is visible. Photo: Zureks, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>, via Wikimedia Commons.</figcaption></figure>'),
+  card('The five families at a glance','<p>Most motor failures are counted by the component that finally gave up, but the useful question is which mechanism did the damage. The five families below cover almost everything you will meet in a plant: bearings, stator winding and insulation, rotor, shaft and coupling, and application or environment.</p><p><strong>Bearings (40–50 %)</strong> — fatigue, contamination, lubrication and shaft currents. <strong>Stator winding and insulation (30–40 %)</strong> — thermal ageing, partial discharge, contamination and inverter overvoltage. <strong>Rotor (5–10 %)</strong> — bar and end-ring fatigue, eccentricity, magnets. <strong>Shaft and coupling (2–5 %)</strong> — misalignment, unbalance, resonance, overhung load. <strong>Application and environment (5–15 %)</strong> — cooling, moisture, supply quality and protection settings.</p>'+mfFig(mfChartFamilies(),'Published ranges, not your fleet: the dot is the midpoint used in the text, the bar is the spread across surveys.')+'<p>The ranges overlap because a bearing that fails from shaft current is an electrical failure, and a winding that fails from blocked cooling is a maintenance failure. Component statistics describe where the damage ended, not why it began.</p><p>The numbers also depend on the population. Large industrial surveys, repair-shop teardowns and insurance claims all sample different machines, duty cycles and maintenance cultures. A plant with clean power, correct alignment and a lubrication route will see far fewer bearing failures than a quarry running the same motors. Use the shape of the distribution to decide what to inspect, not to predict your own failure rate.</p>'),
+  card('Reading the stage','<p>The cabinet is the drive; the circle is the motor seen from the shaft end. Each family moves differently on purpose: a bearing fault rattles fast with impact rings at the bearing; a stator fault barely shakes the frame but arcs, chars coils and smokes; a rotor fault runs rough with a speed wobble and a hot bar; a shaft fault swings in a slow orbit; a cooling fault only slows the fan and heats the winding.</p><p>The right-hand panel shows accumulated damage, estimated time to trip, the protection code and the five spectrum positions where the fault appears. The traces are a rolling window: vibration in mm/s, motor current in A, winding temperature in °C. On a real machine vibration and current would be sampled at kilohertz; here they are shaped by the damage level so the pattern is visible.</p>'+mfFig(mfChartProgression(),'Damage is forced to grow linearly here. On a real machine the last 10 % often takes less time than the first 10 %.')+'<p>Watch the first ten seconds, not the trip. The useful information is which channel moves first: vibration rises before temperature in a bearing fault, current sidebands appear before the winding cooks in a rotor fault, and temperature rises almost alone when cooling is lost. The drive screen is deliberately simple—state, DC-link voltage, current and a temperature estimate—while the protection code names what finally tripped.</p><p>A real machine may sit at 30 % damage for years and then fail in a week once a seal lets contamination in. Use the animation to learn the sequence, not the timing. The time-scale control changes how fast damage accumulates; it does not change the shape of the signatures.</p>'),
+  card('Reading the spectrum signature','<p>The bars show where energy appears, not calibrated amplitudes. <strong>1×</strong> is once per revolution — unbalance, eccentricity, a loose rotor. <strong>2×</strong> is twice per revolution — misalignment, coupling geometry, soft foot. <strong>BPFO</strong> is the ball-pass frequency of the outer race, with harmonics — a race defect. <strong>f(1 ± 2s)</strong> are current sidebands around the supply frequency, spaced by twice the slip — the rotor-bar signature. <strong>2fl</strong> is twice line frequency — negative-sequence current, static eccentricity, winding asymmetry. The dominant bar for the selected family is outlined in lime; hover a bar for its meaning.</p><p>Worked example, 4-pole motor at 1475 rpm on 50 Hz, slip s ≈ 1.7 %: 1× = 24.6 Hz, 2× = 49.2 Hz, BPFO ≈ (Nb/2)(1 − d/D cos α)·fr ≈ 3.2 × 24.6 ≈ 79 Hz for eight balls with d/D cos α ≈ 0.2, f(1 ± 2s) = 50 ± 1.7 Hz, and 2fl = 100 Hz.</p>'+mfFig(mfChartSpectrum(),'Left: vibration with 1×, 2× and BPFO. Right: current with the line frequency, its twice-slip sidebands and 2fl. The stage packs all five markers into one strip for teaching; real analyzers separate the channels.')+'<p>Separate the domains before you interpret anything. Vibration analysis looks at 1×, 2× and bearing frequencies; motor-current signature analysis looks at the supply frequency and its sidebands. A peak at 100 Hz in a current spectrum is not the same thing as a 100 Hz vibration peak, even when both point to a problem.</p><p>The spacing matters as much as the peak. Sidebands that move apart as load increases are a rotor signature; fixed sidebands around a bearing frequency suggest modulation by a defect. Always record load and speed with the spectrum, because almost every frequency scales with running speed or slip.</p><p>Bearing defects are easiest to see in an envelope spectrum, not the raw velocity spectrum. Real machines show several signatures at once; the diagnostic question is which one appeared first and how it grows with load.</p>'),
+  card('Field evidence','<p>Visible damage is late-stage evidence. By the time the varnish is black or a bar is cracked, the machine has been sending electrical and thermal signals for months. Photograph the failure before cleaning, keep the failed part, and match the damage pattern to the signature you recorded.</p><figure><img src="'+mfPhotos.burnt+'" alt="Interior of an overheated motor with darkened stator windings"><figcaption>Overheated stator: varnish carbonised, windings discoloured and brittle. Photo: K.kudelina, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, via Wikimedia Commons.</figcaption></figure><figure><img src="'+mfPhotos.rotor+'" alt="Squirrel-cage rotor with bars and end ring"><figcaption>Squirrel-cage rotor: bars and end ring are one casting. A cracked bar changes the current signature long before it is visible. Photo: Zureks, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>, via Wikimedia Commons.</figcaption></figure><p>A melted phase connection and a uniformly browned winding tell different stories. The first points to a loose terminal or a high-resistance joint; the second points to sustained overheating, blocked cooling or a thermal overload set too high. Read the pattern before replacing the part.</p><p>For the rotor, look at the end ring as well as the bars. Cracks often start where the bar meets the ring, and a bar that has lifted slightly from the laminations changes the current signature without leaving an obvious mark. Keep the photographs with the machine history so the next failure can be compared.</p>'),
 
-  card('Life is a thermal budget','<p>Insulation ageing is chemical, and the field rule is the Montsinger approximation: life halves for every 8–10 K sustained rise above the rated hot spot. The model here uses 10 K and a Class F reference of 155 °C, so 165 °C gives 0.50× life, 145 °C gives 2.00× and 185 °C gives 0.13×.</p><p>This is why a motor rated Class F with Class B rise (80 K) lasts: the margin is deliberate. It is also why cooling, ambient, altitude and harmonics matter more than the nameplate kW suggests. A clogged cowl or a 3 % voltage unbalance can consume that margin without ever tripping the overload.</p>'),
-  card('Voltage unbalance is silent derating','<p>Current unbalance is typically 6–10 times voltage unbalance, and the negative-sequence current heats the rotor. NEMA MG 1 guidance derates the motor to about 0.98 at 1 %, 0.95 at 2 %, 0.88 at 3 % and 0.75 at 5 % unbalance; the temperature-rise penalty is roughly 2 × (%unbalance)², so 5 % adds about 50 % to the rise.</p><p>A motor can run for years at 3 % unbalance and simply die early. Log the supply over a full production cycle, not for five minutes, and check all three phase currents as well as voltages.</p>'),
-  card('From symptom to proof','<p>Winding: insulation resistance and PI first, then winding-resistance balance, surge comparison and partial discharge. A low IR that recovers after drying is moisture; one that does not is damage.</p><p>Bearings: velocity spectrum for the running condition, envelope demodulation for early defects, grease condition, and shaft-voltage measurement on inverter-fed machines. Non-synchronous peaks are the giveaway.</p><p>Rotor: MCSA under steady load, looking for sidebands at f(1 ± 2s), plus rotor resistance and a visual check. Mechanical: vibration phase, laser alignment, runout, bump test.</p><p>Every test answers a different question. Replacing the test with an opinion is how repeat failures happen.</p>'),
-  card('The component is not the cause','<p>Typical chains: misalignment → bearing load → heat → grease failure → seizure → rotor rub. Blocked cooling → insulation ageing → turn-to-turn short → earth fault. Shaft voltage → fluting → vibration → seal wear → contamination → second bearing failure.</p><p>Ask what changed, preserve the evidence before cleaning, and verify the corrective action with a measurement. If the RCA ends at the component name, it has not started yet.</p>'),
-  card('What the numbers cannot tell you','<p>Published shares vary with population: LV versus MV, new versus repaired, survey versus teardown study. L10 bearing life is a statistical rating that assumes clean lubrication and correct mounting, so real life is often a fraction of it. A Weibull shape above 1 tells you the mode is wear-out and a time-based action may help; near 1, condition monitoring and spares are the better answer.</p><p>Use the numbers to prioritise inspection and spares, never to predict a specific machine failure date.</p>'),
+  card('Life is a thermal budget','<p>Insulation ageing is chemical, and the field rule is the Montsinger approximation: life halves for every 8–10 K sustained rise above the rated hot spot. The model here uses 10 K and a Class F reference of 155 °C, so 165 °C gives 0.50× life, 145 °C gives 2.00× and 185 °C gives 0.13×.</p><p>This is why a motor rated Class F with Class B rise (80 K) lasts: the margin is deliberate. It is also why cooling, ambient, altitude and harmonics matter more than the nameplate kW suggests. A clogged cowl or a 3 % voltage unbalance can consume that margin without ever tripping the overload.</p>'+mfFig(mfChartLife(),'Montsinger approximation with a Class F reference of 155 °C and a 10 K halving interval. The curve is a planning rule, not a guarantee.')+'<p>The 10 K rule is a planning tool, not a guarantee. It assumes the insulation system is the limiting part and that the hot spot is measured or estimated correctly. Inverter-fed motors add high-frequency losses and voltage stress that a 50 Hz thermal model does not capture; that is why IEC 60034-18-41 treats inverter duty as a separate qualification.</p><p>Class F insulation with Class B rise is a common industrial compromise: the winding can run at 155 °C but the design keeps it near 120–130 °C at rated load, leaving margin for altitude, dirty air and occasional overload. If you buy a motor with Class F rise instead, you have spent that margin before the machine is installed.</p>'),
+  card('Voltage unbalance is silent derating','<p>Current unbalance is typically 6–10 times voltage unbalance, and the negative-sequence current heats the rotor. NEMA MG 1 guidance derates the motor to about 0.98 at 1 %, 0.95 at 2 %, 0.88 at 3 % and 0.75 at 5 % unbalance; the temperature-rise penalty is roughly 2 × (%unbalance)², so 5 % adds about 50 % to the rise.</p><p>A motor can run for years at 3 % unbalance and simply die early. Log the supply over a full production cycle, not for five minutes, and check all three phase currents as well as voltages.</p>'+mfFig(mfChartUnbalance(),'NEMA MG 1 derating guidance. The temperature-rise penalty is separate and grows roughly with the square of the unbalance.')+'<p>Measure current as well as voltage. A 2 % voltage unbalance can produce 12–20 % current unbalance, and the negative-sequence component is what heats the rotor. A three-phase power logger on the incoming terminals for a full shift is more useful than a single multimeter reading, especially when large single-phase loads switch in and out.</p><p>Unbalance also changes the spectrum: the negative-sequence current appears at twice line frequency, and the rotor heats asymmetrically. That is why a motor can pass a no-load test and fail under load—the negative-sequence field only does real work when the rotor is turning.</p>'),
+  card('From symptom to proof','<p>Winding: insulation resistance and PI first, then winding-resistance balance, surge comparison and partial discharge. A low IR that recovers after drying is moisture; one that does not is damage.</p><p>Bearings: velocity spectrum for the running condition, envelope demodulation for early defects, grease condition, and shaft-voltage measurement on inverter-fed machines. Non-synchronous peaks are the giveaway.</p><p>Rotor: MCSA under steady load, looking for sidebands at f(1 ± 2s), plus rotor resistance and a visual check. Mechanical: vibration phase, laser alignment, runout, bump test.</p><p>Every test answers a different question. Replacing the test with an opinion is how repeat failures happen.</p>'+mfFig(mfChartTests(),'Use the channel that moved first to choose the confirming test. A test without a baseline is hard to interpret.')+'<p>Tests are most useful when they are comparable. Record a baseline when the machine is healthy, at the same load and speed, and repeat the same measurement after the repair. A single spectrum with no baseline is an opinion with a plot attached.</p><p>Offline tests—IR, PI, winding resistance, surge—answer insulation and circuit questions. Online tests—vibration, MCSA, thermal imaging—answer condition questions without stopping the process. Use offline tests to confirm what online tests suspect, not as a yearly ritual.</p>'),
+  card('The component is not the cause','<p>Typical chains: misalignment → bearing load → heat → grease failure → seizure → rotor rub. Blocked cooling → insulation ageing → turn-to-turn short → earth fault. Shaft voltage → fluting → vibration → seal wear → contamination → second bearing failure.</p><p>Ask what changed, preserve the evidence before cleaning, and verify the corrective action with a measurement. If the RCA ends at the component name, it has not started yet.</p>'+mfFig(mfChartChain(),'One of many possible chains. The failed component is where the chain ended, not where it started.')+'<p>The chain is usually longer than the first answer. A failed bearing is often the end of a chain that starts with a soft foot, a misaligned coupling or a damaged seal. Replacing the bearing restores production but leaves the chain intact, which is why the same machine fails again in six months.</p><p>Preserve evidence before cleaning: photographs, grease samples, vibration files, the drive fault log and the maintenance history. Then ask what changed—new load, new coupling, new supply transformer, new maintenance interval. The answer is often in the change log, not in the failed part.</p>'),
+  card('What the numbers cannot tell you','<p>Published shares vary with population: LV versus MV, new versus repaired, survey versus teardown study. L10 bearing life is a statistical rating that assumes clean lubrication and correct mounting, so real life is often a fraction of it. A Weibull shape above 1 tells you the mode is wear-out and a time-based action may help; near 1, condition monitoring and spares are the better answer.</p><p>Use the numbers to prioritise inspection and spares, never to predict a specific machine failure date.</p>'+mfFig(mfChartWeibull(),'Weibull shape β: below 1 points to infant mortality, near 1 to random failures, above 1 to wear-out.')+'<p>Use the shape to choose the intervention. A shape above 1 means wear-out, so a time-based replacement interval can work. Near 1, failures are random, and condition monitoring plus spares are more effective than fixed intervals. Below 1, infant mortality points to assembly, commissioning or supplier quality.</p><p>Published shares are priors, not measurements. Combine them with your own failure log; after a few years, your fleet distribution is more useful than any industry average, because it includes your duty cycles, your maintenance culture and your power quality.</p>'),
  ],
  sources:'Reference frame: IEC 60034-1 and IEC 60034-18-41, IEEE 43, IEEE 1415, ISO 20816-1/-3, NEMA MG 1-14.36, EASA AR100, and published motor failure surveys (EPRI/GE, IEEE 493). The thermal and derating arithmetic is a teaching model built on those rules.'
 });
