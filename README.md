@@ -8,35 +8,32 @@ Everything — styles, SVG scenes, models, embedded reference documents — live
 
 ## The motor failure chapters
 
-Chapter 43, **Where motors fail — evidence, mechanism and prevention**, sits under the Motor lesson
+Chapter 43, **Where motors fail — evidence, mechanism and the trip**, sits under the Motor lesson
 (`#motor`) in the lesson menu and is deep-linkable at:
 
 ```
 NORD-motor-and-drive-explorer.html#motor-failure
 ```
 
-It covers:
+It is one section, not a reading page followed by a separate animation. Selecting a failure family
+switches the evidence, the traces and the simulation together:
 
-- the five failure families and their published shares — bearings, stator winding, rotor, shaft/coupling,
+- five failure families and their published shares — bearings, stator winding, rotor, shaft/coupling,
   application and environment;
-- a clickable motor cross-section that ties each family to the physical part;
-- the evidence chain for each family: what you see, the test that proves it, and the fix;
-- an insulation-life model (Montsinger, 10 K per halving, Class F 155 °C reference);
-- NEMA voltage-unbalance derating and the 2 × (%unbalance)² temperature-rise penalty;
-- six reference cards on statistics, diagnostics and root-cause discipline, plus field photographs of an
-  overheated stator and a squirrel-cage rotor.
+- a clickable, animated motor cross-section: the rotor turns, the frame shakes with the fault, the winding
+  glows with the hot spot, and bearing spall / rotor crack / insulation arcing appear as damage grows;
+- a drive panel with READY → WARN → ALARM → TRIP, protection LEDs, health bar, estimated time to trip and
+  the protection code;
+- a spectrum-signature panel (1×, 2×, BPFO, f(1±2s), 2×line) and live vibration, current and winding
+  temperature traces, so you can see which channel moves first;
+- the evidence chain for the selected family: primary stress, first test, prevention;
+- live hot-spot temperature and Montsinger insulation-life readouts, plus the NEMA unbalance derating
+  background in the reference cards;
+- eight reference cards including field photographs of an overheated stator and a squirrel-cage rotor.
 
-Chapter 44, **Watch a drive fail — from symptom to trip** (`#failure-in-motion`), is the animated companion:
-
-- inject one of six faults (bearing, insulation, rotor bar, misalignment, cooling, supply unbalance);
-- the motor rotates, shakes and heats while damage accumulates, with a drive display, protection LEDs,
-  a spectrum-signature panel and a protection trip at the end;
-- live vibration, current and winding-temperature traces show which channel moves first;
-- pause, reset, start from a chosen damage level and run at 1×, 4× or 12× time scale.
-
-Both chapters are teaching models, not reliability predictions or settings advice. See the limits note on
-each page. The numbers are built on published rules (IEC 60034, IEEE 43/1415, ISO 20816, NEMA MG 1,
-EASA AR100).
+Controls: failure family, time scale (1× / 4× / 12×), start with 0–95 % damage, Pause and Reset.
+The simulation is a teaching model, not a reliability prediction or settings advice. The numbers are built
+on published rules (IEC 60034, IEEE 43/1415, ISO 20816, NEMA MG 1, EASA AR100).
 
 ### Photograph credits
 
