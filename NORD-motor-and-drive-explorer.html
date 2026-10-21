@@ -446,7 +446,7 @@ const details={
 };
 const sources={6:'Local NORD evidence: '+manual(107,'p. 107 · P112')+'. General d/q explanation is a teaching model.',11:`Supplemental web evidence: <a href="${transformSource}" target="_blank" rel="noopener">Microchip FOC Transformations · §§1.1–1.4, pp. 4–7</a>. Induction flux orientation: <a href="${inductionSource}" target="_blank" rel="noopener">Microchip AN908 · vector-control theory</a>. No Clarke/Park result was found in the local NORD index.`,12:'Local NORD evidence: '+manual(258,'§8.8.1, pp. 258–259')+'; '+manual(260,'§8.8.2, pp. 260–261')+'; '+manual(262,'§8.8.3, p. 262')+'. Printed and physical PDF page numbers match. Curves shown here are derived teaching models; the original manual plots normalise each characteristic to its own rating.',14:'Local NORD parameter references: '+manual(258,'§8.8.1, p. 258')+'; '+manual(107,'P112, p. 107')+`. Generic control structure: <a href="${inductionSource}" target="_blank" rel="noopener">Microchip AN908</a>.`};
 const related={0:[10,11,12],1:[8,2],2:[12,4],3:[11,14],4:[12,6],5:[10,6],6:[11,14,10],7:[9,10],8:[9,7],9:[8,7],10:[6,13,7],11:[6,14,3],12:[2,4,13],13:[10,12],14:[6,11,5]};
-function routeFromHash(){const i=slugs.indexOf(location.hash.slice(1));return i<0?0:i;}
+function routeFromHash(){const h=location.hash.slice(1);if(h==='wiring')return 44;const i=slugs.indexOf(h);return i<0?0:i;}
 function lessonChrome(){
  $('circuit-context').innerHTML='<span class="context-label">In the circuit</span>'+Object.entries(stageNames).map(([key,name])=>`<button data-jump="${stageRoutes[key]}" class="${stageFor[chapter]===key?'active':''}" ${stageFor[chapter]===key?'aria-current="location"':''}>${name}</button>`).join('<span aria-hidden="true" style="color:#52647e">→</span>');
  $('lesson-details').innerHTML='<div class="detail-grid">'+(details[chapter]||[]).join('')+'</div>'+(sources[chapter]?'<p class="source-line">'+sources[chapter]+'</p>':'')+'<div class="related"><span>Keep exploring</span>'+(related[chapter]||[]).map(i=>`<button data-jump="${i}">${scenes[i].nav} ↗</button>`).join('')+'</div>';
@@ -7863,7 +7863,19 @@ const maExistingNavigate=navigate;
 navigate=function(index){if(maPages[canonicalLesson(index)]&&chapter!==canonicalLesson(index)){stop();angle=motion=0;}return maExistingNavigate(index);};
 function maUpdateGroups(){for(const group of document.querySelectorAll('.ma-topic-group'))group.hidden=[...group.querySelectorAll('button[data-chapter]')].every(b=>b.hidden);}
 const maExistingFilter=filterLessons;
-filterLessons=function(){maExistingFilter();const query=$('lesson-search').value.toLowerCase().trim();document.querySelectorAll('#chapters button').forEach(button=>{const i=Number(button.dataset.chapter),scene=scenes[i];if(!scene)return;const searchable=[scene.nav,scene.title,scene.sub,scene.idea,(slugs[i]||'').replaceAll('-',' '),maGuideSearchText(i),...(details[i]||[])].join(' ').replace(/<[^>]*>/g,' ').toLowerCase();button.hidden=i===0||!lessonOrder.includes(i)||!searchable.includes(query);});maUpdateGroups();};
+filterLessons=function(){
+ maExistingFilter();
+ const query=$('lesson-search').value.toLowerCase().trim();
+ const entries=[...document.querySelectorAll('#chapters button')].map(button=>{
+  const i=Number(button.dataset.chapter),scene=scenes[i];if(!scene)return null;
+  const primary=[scene.nav,scene.title,scene.sub,(slugs[i]||'').replaceAll('-',' '),maJourneyLabel(i)].join(' ').toLowerCase();
+  const secondary=[scene.idea,maGuideSearchText(i),...(details[i]||[])].join(' ').replace(/<[^>]*>/g,' ').toLowerCase();
+  return {button,i,primary,secondary};
+ }).filter(Boolean);
+ const hasPrimary=!!query&&entries.some(e=>e.primary.includes(query));
+ entries.forEach(({button,i,primary,secondary})=>{button.hidden=i===0||!lessonOrder.includes(i)||(query?!((hasPrimary?primary:secondary).includes(query)):false);});
+ maUpdateGroups();
+};
 function maBuildDirectory(){
  const nav=$('chapters');for(const [name,indices]of maTopicGroups){const group=document.createElement('section');group.className='ma-topic-group';group.setAttribute('aria-label',name);const title=document.createElement('h2');title.textContent=name;group.append(title);for(const i of indices){const button=nav.querySelector('button[data-chapter="'+i+'"]');if(button)group.append(button);}nav.append(group);}
  const home=nav.querySelector('button[data-chapter="0"]');if(home)home.hidden=true;maUpdateGroups();
@@ -8342,6 +8354,9 @@ const maJourney=[
  {title:'Inverter and motor cable',short:'Inverter',teaser:'Switch states, PWM, gate drivers and cable effects.',
   bridge:'The DC link supplies the inverter. Follow its phase connections and PWM voltage, then inspect the powered gate drivers and the fast voltage edges travelling along the motor cable. The controller’s feedback calculations are explained after the motor and load.',
   views:[[28,'Switch states and current paths'],[3,'PWM waveforms'],[29,'Modulation and voltage limits'],[30,'Gate drive and switching'],[31,'Cable and bearing currents']]},
+ {title:'Cables and wiring',short:'Wiring',teaser:'Power, brake, thermistor and encoder cables, pinouts and variants.',
+  bridge:'The inverter output reaches the motor only through a cable and its connectors. Follow the power, brake release, thermistor and encoder circuits, read the pinout, then choose the jacket and connector variant that matches the motor and the environment.',
+  views:[[44,'Wiring, cables and connectors']]},
  {title:'Motor construction',short:'Motor',teaser:'Windings, rotor types, induction and physical geometry.',
   bridge:'The inverter’s U, V and W terminals connect to complete stationary windings. Follow their links and field pattern, compare rotor constructions, then inspect induced cage currents and alternative motor geometries.',
   views:[[20,'Windings and connections'],[24,'Rotor types'],[22,'Squirrel-cage induction'],[37,'Geometry and cooling']]},
@@ -8350,7 +8365,7 @@ const maJourney=[
   views:[[27,'Flux and saturation'],[6,'Flux and torque current'],[25,'Reluctance torque and MTPA']]},
  {title:'Motor performance and application',short:'Application',teaser:'Shaft power, V/f, starting, gearing and thermal duty.',
   bridge:'Convert electromagnetic torque into useful shaft power. Compare V/f operating envelopes and load acceleration, inspect PMSM voltage limits, then follow speed and torque through the gearbox. Current limits and heat determine how long the application can sustain that performance.',
-  views:[[10,'Torque and shaft power'],[4,'V/f, torque and power'],[21,'Starting and load torque'],[26,'PMSM operating limits'],[42,'PM motor overspeed'],[13,'Gearbox and output'],[36,'Current limits and thermal duty'],[43,'Where motors fail'],[44,'Cables and connectors']]},
+  views:[[10,'Torque and shaft power'],[4,'V/f, torque and power'],[21,'Starting and load torque'],[26,'PMSM operating limits'],[42,'PM motor overspeed'],[13,'Gearbox and output'],[36,'Current limits and thermal duty'],[43,'Where motors fail']]},
  {title:'Motor control and feedback',short:'Control',teaser:'Follow measurements back to the voltage commands.',
   bridge:'Now follow information back around the power circuit. In vector control, the controller uses current measurements and an estimated or measured angle to choose voltage commands. Start with the whole loop and compare it with simple V/f control, then examine the transforms, sampling, regulation and low-speed limitations.',
   views:[[14,'Control system and feedback'],[11,'Clarke and Park'],[34,'Current sensing and regulation'],[35,'Low-speed operation']]},
@@ -8383,7 +8398,7 @@ maBuildDirectory=function(){
   section.append(links);section.open=topic.views.some(([id])=>id===chapter);nav.append(section);
  });
  const unused=document.createElement('div');unused.hidden=true;for(const button of buttons.values()){button.hidden=true;unused.append(button);}nav.append(unused);
- nav.setAttribute('aria-label','Ten chapters from supply to application');maUpdateGroups();
+ nav.setAttribute('aria-label','Eleven chapters from supply to application');maUpdateGroups();
 };
 maUpdateGroups=function(){
  const query=$('lesson-search').value.toLowerCase().trim(),current=maJourneyByPage.get(chapter)?.group;
@@ -8404,7 +8419,7 @@ function maJourneyNext(){
  const previous=lessonOrder[at-1];$('previous').title=previous===undefined?'Start of the sequence':'Previous: '+maJourneyLabel(previous);$('previous').setAttribute('aria-label',$('previous').title);
  target.className='next-topics ma-journey-next';target.hidden=chapter===0;
  if(next===undefined){target.innerHTML='<span>End of the learning sequence</span><button data-jump="0">Return to the circuit overview →</button>';$('next').title='End of the sequence';$('next').setAttribute('aria-label','End of the sequence');return;}
- const different=info?.group!==nextInfo?.group,heading=chapter===0?'Start with the incoming supply':different?'Next chapter · '+maJourneyNumber(nextInfo.group)+' · '+nextInfo.topic.title:info.group===7?'Alternative motor course':'Next view · '+info.topic.title;
+ const different=info?.group!==nextInfo?.group,heading=chapter===0?'Start with the incoming supply':different?'Next chapter · '+maJourneyNumber(nextInfo.group)+' · '+nextInfo.topic.title:info.group===8?'Alternative motor course':'Next view · '+info.topic.title;
  target.innerHTML='<div><span>'+maEscape(heading)+'</span><p>'+maEscape(different?nextInfo.topic.teaser:scenes[next].sub)+'</p></div><button data-jump="'+next+'">'+maEscape(maJourneyLabel(next))+' →</button>';
  $('next').title='Next: '+maJourneyLabel(next);$('next').setAttribute('aria-label','Next: '+maJourneyLabel(next));
 }
@@ -8431,10 +8446,10 @@ initialiseAtlas=function(){
  maJourneyPreviousInitialise();
  const context=document.createElement('section');context.id='ma-topic-context';context.className='ma-topic-context';context.hidden=true;$('workspace').before(context);
  const home=document.createElement('section');home.id='ma-home-journey';home.className='ma-home-journey';home.hidden=true;home.setAttribute('aria-labelledby','ma-home-journey-title');
- home.innerHTML='<div class="ma-journey-heading"><div><h2 id="ma-home-journey-title">From supply to application</h2><p>Follow electrical energy to the motor and load, then follow measurement signals back to the controller and apply those principles in tuning. Finish with braking and safety.</p></div><button data-jump="1">Start at the supply →</button></div><ol>'+maJourney.map((topic,group)=>'<li><button data-jump="'+topic.views[0][0]+'"><span class="ma-topic-number">'+maJourneyNumber(group)+'</span><span><strong>'+maEscape(topic.title)+'</strong><small>'+maEscape(topic.teaser)+'</small></span></button></li>').join('')+'</ol><p class="ma-journey-order-note">This is a learning order. During operation, power conversion, motor motion, feedback and safety supervision interact continuously.</p>';
+ home.innerHTML='<div class="ma-journey-heading"><div><h2 id="ma-home-journey-title">From supply to application</h2><p>Follow electrical energy to the motor and load, then follow measurement signals back to the controller and apply those principles in tuning. Finish with braking and safety.</p></div><div class="ma-journey-actions"><button data-jump="1">Start at the supply →</button><button data-jump="44">Wiring and cables →</button></div></div><ol>'+maJourney.map((topic,group)=>'<li><button data-jump="'+topic.views[0][0]+'"><span class="ma-topic-number">'+maJourneyNumber(group)+'</span><span><strong>'+maEscape(topic.title)+'</strong><small>'+maEscape(topic.teaser)+'</small></span></button></li>').join('')+'</ol><p class="ma-journey-order-note">This is a learning order. During operation, power conversion, motor motion, feedback and safety supervision interact continuously.</p>';
  $('ma-lesson-guide').before(home);
- $('all-lessons').textContent='Chapters';$('all-lessons').title='Ten chapters from the AC supply to the application';$('lesson-search').placeholder='Find a topic, signal or parameter';$('lesson-search').setAttribute('aria-label','Search chapters and their views');
- document.querySelector('.navigation-head>.kicker').textContent='Supply to application · 10 chapters';
+ $('all-lessons').textContent='Chapters';$('all-lessons').title='Eleven chapters from the AC supply to the application';$('lesson-search').placeholder='Try wiring, encoder or torque';$('lesson-search').setAttribute('aria-label','Search chapters and their views');
+ document.querySelector('.navigation-head>.kicker').textContent='Supply to application · 11 chapters';
  document.querySelector('.footer>span:last-child').textContent='← → Views   /   Space Play   /   P Present   /   F Fullscreen';
  const style=document.createElement('style');style.textContent=`
   .lesson-menu-open #chapters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:10px;padding:13px;max-height:68vh}
@@ -8465,13 +8480,13 @@ initialiseAtlas=function(){
   .ma-journey-next>button{font-size:12px;padding:10px 13px;line-height:1.5;white-space:normal;text-align:left}
   .ma-home-journey{margin:28px 0 0;padding:23px 25px;border:1px solid #324960;border-radius:12px;background:#111f30}
   .ma-journey-heading{display:flex;gap:20px;justify-content:space-between;align-items:start;margin-bottom:19px}.ma-journey-heading h2{margin:0 0 8px;font-size:20px;font-weight:550;color:#dce9f3}.ma-journey-heading p{font-size:13px;line-height:1.75;color:#a9bfd2;max-width:90ch;margin:0}
-  .ma-journey-heading>button{white-space:nowrap;font-size:12px;padding:10px 13px}
+  .ma-journey-heading>.ma-journey-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.ma-journey-heading>.ma-journey-actions button{white-space:nowrap;font-size:12px;padding:10px 13px}
   .ma-home-journey ol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;list-style:none;padding:0;margin:0;counter-reset:none}
   .ma-home-journey li{min-width:0}.ma-home-journey li>button{display:flex;gap:13px;text-align:left;width:100%;height:100%;padding:13px;background:#16283a;border:1px solid #2b4358;border-radius:8px}
   .ma-home-journey li strong{display:block;font-size:13px;font-weight:600;line-height:1.5;color:#d7e6f2}.ma-home-journey li small{display:block;font-size:11px;line-height:1.6;margin-top:4px;color:#9eb6c9}
   .ma-home-journey .ma-journey-order-note{font-size:12px;color:#9eb5c7;line-height:1.7;border-top:1px solid #2b4257;padding-top:14px;margin:18px 0 0}
   .present #ma-topic-context,.present #ma-home-journey,.present #dive-deeper.ma-journey-next,.present #chapters,.present .navigation-head{display:none!important}
-  @media(max-width:760px){.lesson-menu-open #chapters{grid-template-columns:1fr}.ma-home-journey{padding:18px 15px}.ma-journey-heading{display:block}.ma-journey-heading>button{margin-top:14px}.ma-home-journey ol{grid-template-columns:1fr}.ma-topic-tabs{gap:5px}.ma-topic-tabs button{font-size:11px;padding:7px 9px}.ma-topic-bridge{font-size:12px}.ma-view-position{font-size:10px}#ma-journey-select{max-width:72vw;font-size:11px}}
+  @media(max-width:760px){.lesson-menu-open #chapters{grid-template-columns:1fr}.ma-home-journey{padding:18px 15px}.ma-journey-heading{display:block}.ma-journey-heading>.ma-journey-actions{margin-top:14px;justify-content:flex-start}.ma-home-journey ol{grid-template-columns:1fr}.ma-topic-tabs{gap:5px}.ma-topic-tabs button{font-size:11px;padding:7px 9px}.ma-topic-bridge{font-size:12px}.ma-view-position{font-size:10px}#ma-journey-select{max-width:72vw;font-size:11px}}
  `;document.head.append(style);maJourneySync();
 };
 
@@ -8929,7 +8944,7 @@ function scArrangeControls(){
   input.onchange=()=>{stop();settings.controlMode=input.value;settings.showEncoder=input.value==='encoder';if($('layer-mode'))$('layer-mode').value=input.value;controls();draw();saveExplorer();};
  }
  for(const child of Array.from(panel.children)){
-  if(child.tagName==='H2'){child.textContent='Try it';continue;}
+  if(child.tagName==='H2'){child.textContent=chapter===44?'Browse the sections':'Try it';continue;}
   const inputs=Array.from(child.querySelectorAll('input,select'));
   if(child.id==='pm-over-play'){child.classList.add('sc-primary-play');continue;}
   const known=keys!==undefined,essential=inputs.some(input=>keys?.includes(input.id.replace(/^setting-/,'')));
@@ -10499,7 +10514,7 @@ const ccPinSets={
   {n:'PE',f:'Protective earth',c:'Green/yellow'}
  ]}
 };
-const ccViewOptions=[['chain','Connection chain'],['motor','Motor cable'],['encoder','Encoder cable'],['pins','Connector pinout'],['select','Cable selection']];
+const ccViewOptions=[['chain','1 · Connection chain'],['motor','2 · Motor cable'],['encoder','3 · Encoder cable'],['pins','4 · Connector pinout'],['select','5 · Cable selection']];
 const ccAppOptions=[['mains','Mains input'],['motor','Motor'],['brake','Brake resistor'],['enc','Encoder'],['bus','Bus / Ethernet'],['daisy','Daisy-chain']];
 function ccFig(svg,caption){return mfFig(svg,caption);}
 function ccConn(x,y,label,color=L,w=58,h=28){e('rect',{x:x-w/2,y:y-h/2,width:w,height:h,rx:7,fill:'#142437',stroke:color,'stroke-width':1.5});tx(x,y+4,label,color,11,'','middle');}
@@ -10716,7 +10731,7 @@ function ccDraw(){
  else ccChain();
 }
 function ccControls(){
- maSelect('ccView','Connection view',ccViewOptions);
+ maSelect('ccView','Section',ccViewOptions);
  const v=settings.ccView;
  if(v==='chain'){maSelect('ccRoute','Cable route',[['separate','Separate cables'],['hybrid','One hybrid cable']]);}
  else if(v==='motor'){maSelect('ccCore','Highlight conductor',[['U','U phase'],['V','V phase'],['W','W phase'],['PE','Protective earth'],['brake','Brake pair'],['tf','Thermistor pair'],['shield','Overall shield']]);}
@@ -10797,15 +10812,15 @@ function ccInlineMatrix(){
 }
 maRegister(44,{
  slug:'cables-connectors',
- nav:'Cables & connectors',
- title:'Cables, connectors and encoder wiring',
- sub:'Follow power, brake, thermistor and encoder conductors from drive to motor, read the pinout, and choose the right cable variant.',
- idea:'A drive installation is several electrical jobs sharing one route: three power phases with protective earth, a DC brake release pair, a thermistor circuit and an encoder feedback cable. The connector is not cosmetic. Its coding, pole count, contact size and shield termination decide which signals can pass and how robustly. NORD’s range reflects that with power, hybrid and signal cables, open ends or moulded connectors such as HAN Q4/2, Q5, Q8, HAN 10E, M12, M23, ST8 and NQ16. Read the circuit first, then the connector, then the variant.',
+ nav:'Wiring & cables',
+ title:'Wiring, cables and connectors',
+ sub:'Follow the power, brake, thermistor and encoder wiring from drive to motor, read the pinout, and choose the right cable variant.',
+ idea:'Wiring a drive installation is several electrical jobs sharing one route: three power phases with protective earth, a DC brake release pair, a thermistor circuit and an encoder feedback cable. The connector is not cosmetic. Its coding, pole count, contact size and shield termination decide which signals can pass and how robustly. NORD’s range reflects that with power, hybrid and signal cables, open ends or moulded connectors such as HAN Q4/2, Q5, Q8, HAN 10E, M12, M23, ST8 and NQ16. Read the circuit first, then the connector, then the variant.',
  limit:'Teaching schematic and wiring overview, not a NORD selection or installation instruction. Pin assignments are representative examples taken from NORD wiring documents: HAN Q5 power input, HAN Q8 motor, M12 incremental and absolute encoder connections. Pin numbers, colours and terminal numbers can change with drive series, motor size, encoder type, cable length and variant. Always use the label on the device, the cable data sheet and the applicable manual. The drawings omit contact resistance, current derating, bend radius, chemical compatibility, fire performance, maximum cable length and local installation rules. The matrix is a map of the range, not a stock list.',
  take:'Match the connector and cable to the signal: power, brake, thermistor and encoder are different circuits, even when they share one hybrid jacket.',
  stage:'motor',parent:20,related:[19,14,20,31,16,7],
  defaults:{ccView:'chain',ccRoute:'separate',ccCore:'U',ccEncoder:'incremental',ccResolution:'1024',ccComplement:true,ccAbsTurns:'12',ccPins:'m12-8',ccApp:'motor'},
- controlsTitle:'Explore the connection',
+ controlsTitle:'Browse the sections',
  controls(){ccControls();},
  draw:ccDraw,
  details:[
@@ -10856,6 +10871,12 @@ if(Array.isArray(related[19])&&!related[19].includes(44))related[19].push(44);
 if(Array.isArray(related[14])&&!related[14].includes(44))related[14].push(44);
 if(Array.isArray(funnels[20])&&!funnels[20].includes(44))funnels[20].push(44);
 if(Array.isArray(lessonOrder)&&!lessonOrder.includes(44))lessonOrder.push(44);
+const ccEncoderWireCard=card('Follow the encoder cable and connector','<p>The A/B/Z signals, the absolute position word and their supply all travel through a connector and a shielded cable. The wiring section shows the M12 pin maps, the difference between incremental and absolute wiring, and the checks that prevent a reversed supply or a lost index.</p><p><button data-jump="44">Open wiring, cables and connectors →</button></p>');
+if(Array.isArray(details[19]))details[19].push(ccEncoderWireCard);
+if(Array.isArray(details[14]))details[14].push(ccEncoderWireCard);
+if(Array.isArray(details[31]))details[31].push(card('Choose the motor cable and terminate the shield','<p>The cable carries more than three phases: PE, the brake release pair and the thermistor pair may share the jacket. The wiring section compares separate and hybrid routes, shows a cross-section, and contrasts a 360° gland with a long pigtail.</p><p><button data-jump="44">Open wiring, cables and connectors →</button></p>'));
+if(Array.isArray(details[20]))details[20].push(card('Wire the motor, brake and thermistor','<p>A HAN Q8 motor connector is not just U, V and W. The same insert carries PE, the brake release pair and the thermistor pair. Read the representative pin map before matching a cable to a motor frame size.</p><p><button data-jump="44">Open wiring, cables and connectors →</button></p>'));
+if(Array.isArray(details[16]))details[16].push(card('Follow the brake release pair','<p>The brake coil is supplied by its own pair, not by a motor phase. The wiring section follows MB+ and MB− through the connector, notes the inductive load and points to the cable variants that keep the pair twisted and separated from the encoder.</p><p><button data-jump="44">Open wiring, cables and connectors →</button></p>'));
 // END CABLES AND CONNECTORS
 
 // FLOW_CORE_BRIDGE

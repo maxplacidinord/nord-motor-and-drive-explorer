@@ -44,16 +44,18 @@ Below the stage, every chapter's notes and reference cards are laid out as a sin
 720 px measure) with larger type, section headings and full-width figures, so long explanations read as
 prose instead of being squeezed into a card grid.
 
-## The cables and connectors chapter
+## The wiring and cables chapter
 
-Chapter 44, **Cables, connectors and encoder wiring**, sits under the motor group in the lesson menu and is
-deep-linkable at:
+Chapter 44, **Wiring, cables and connectors**, has its own **Cables and wiring** group in the journey and
+the Chapters menu. It is deep-linkable at:
 
 ```
 NORD-motor-and-drive-explorer.html#cables-connectors
+NORD-motor-and-drive-explorer.html#wiring
 ```
 
-It is one section with five switchable views:
+The home journey also has a direct **Wiring and cables** button. Inside the chapter, use the **Section**
+selector to move between five views:
 
 - **Connection chain** — separate versus hybrid routes from drive to motor, with power, brake, thermistor
   and encoder circuits.
