@@ -2,10 +2,10 @@
 
 A self-contained, single-file interactive atlas for drive and motor engineering: power circuits, modulation,
 motor physics, encoder and tuning behaviour, functional safety, communications, motor failure, and now
-**cables, connectors and motor wiring**.
+**cables, motor wiring and drive-family comparisons**.
 
 Open `NORD-motor-and-drive-explorer.html` in any modern browser. No build step, no server, no dependencies.
-Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file (about 1.8 MB).
+Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file, including the product photographs.
 
 ## The motor failure chapter
 
@@ -102,7 +102,8 @@ They are reproduced unmodified apart from resizing, with attribution in the page
 NORD-motor-and-drive-explorer.html#motor-wiring
 ```
 
-The section selector changes the terminal drawing and its readable connection map together:
+The section selector changes a complete winding schematic and its readable connection map together.
+Switching a configuration animates the coil and wire routes into the new arrangement:
 
 - **IEC terminal links** — six-terminal star and delta connections, with winding-voltage context.
 - **Forced ventilation** — the separate supply to an external cooling fan, independent of the drive's
@@ -116,9 +117,11 @@ The section selector changes the terminal drawing and its readable connection ma
 - **M5000 synchronous motors** — inverter-fed PM motor connections, temperature-sensor protection,
   and cooling choices without applying induction-motor circuits indiscriminately.
 
-Original SVG drawings use the atlas's existing palette. The connection tables remain readable on small
-screens, and references identify the catalogue edition and printed page. All content works offline;
-source links open the manufacturer catalogue pages when online.
+Original SVG drawings use the atlas's existing palette. The diagrams expose winding sections, supply
+routes, internal junctions and external links. Play/pause and replay controls separate the schematic
+transition from the illustrative electrical behaviour. Reduced-motion preferences are respected.
+The connection tables remain readable on small screens, and references identify the catalogue edition
+and printed page. All content works offline; source links open the manufacturer pages when online.
 
 Sources: NORD **M7000, English edition 1425**, especially A24–A25 (external fans), A34 (motor circuit
 diagrams) and A35 (external-fan circuits); **M5000, English edition 0626**, especially pages 9, 11 and 14.
@@ -134,6 +137,38 @@ The manufacturer pages above provide the official catalogue entry points.
 These are labelled teaching configurations. The motor and fan nameplates and the connection diagram
 supplied with the actual unit determine its wiring; terminal position alone is not a connection identifier.
 
+## Drives and competition
+
+Chapter 46, **NORD drives and the competition**, is a top-level topic:
+
+```
+NORD-motor-and-drive-explorer.html#drive-comparison
+```
+
+The comparison workspace contains:
+
+- **Compare families** — two large manufacturer photographs, practical application notes, and a
+  nine-row table covering installation, rating, control, motors, communications, safety, positioning,
+  braking and commissioning. Related alternatives are suggested; cross-category choices are identified.
+- **Explore the NORD range** — an illustrated family-by-family guide, including the difference between
+  starters and inverters and the lifecycle context of older devices.
+- **Manufacturer approaches** — Siemens, SEW-EURODRIVE, ABB, Danfoss, Schneider Electric, Yaskawa and
+  Beckhoff, with 20 competing product families. Design-philosophy assessments are labelled editorial
+  interpretations of the documented products, not official company strategies.
+- **Animated NORD installation architecture** — move the drive between cabinet, field and motor
+  mounting to see power and command routes rearrange, then play or pause the illustrative flow.
+
+Features are qualified by model, option and complete order code. A brake chopper is not presented as
+mains regeneration, safety is not assumed across every family variant, and servo systems are identified
+as architectural alternatives rather than automatic VFD replacements. Sources were reviewed on
+12 November 2026. Published ratings are family ranges, not a substitute for sizing against duty and voltage.
+
+Product photographs are embedded for offline use, resized from official manufacturer sources and
+credited beside each image. Product names and photographs remain the respective manufacturers' property.
+The comparison is an independent educational reference, not manufacturer endorsement.
+
+![Drive comparison preview](docs/drive-comparison-preview.jpg)
+
 ## Using the atlas
 
 - `Home` returns to the interactive power circuit.
@@ -141,11 +176,13 @@ supplied with the actual unit determine its wiring; terminal position alone is n
 - `Present` hides the editing chrome for a walkthrough; `View options` controls labels, guides and readouts.
 - Lesson URLs use the hash, for example `#motor`, `#vf-flux`, `#motor-failure`.
 
-## Checking the motor wiring models
+## Checking the models and comparisons
 
-Run `node --test tests/motor-wiring.test.cjs` with a current Node.js release. No packages are required.
-The checks compare electrical junctions with independently transcribed catalogue maps, account for all
-terminals, validate fan voltage ranges and motor nameplate examples, and parse the embedded JavaScript.
+Run `node --test tests/*.test.cjs` with a current Node.js release. No packages are required.
+The 35 tests compare both the connection data and actual drawn wire geometry with independent catalogue
+maps, check finite morphs and winding identities, validate current balance and pause behaviour, verify
+all 180 NORD/rival pairings and embedded photographs, and parse the executable JavaScript.
+Desktop and 390 px mobile layouts were also checked in a browser.
 
 ## Repository
 
