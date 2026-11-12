@@ -176,10 +176,22 @@ The comparison is an independent educational reference, not manufacturer endorse
 - `Present` hides the editing chrome for a walkthrough; `View options` controls labels, guides and readouts.
 - Lesson URLs use the hash, for example `#motor`, `#vf-flux`, `#motor-failure`.
 
+## Configuration transitions
+
+Changing a select, checkbox or configuration button now eases matching SVG geometry into its
+new arrangement over 520 ms across the main lesson scenes and cable views. Single-subpath
+wires are resampled for interpolation; compound paths retain their exact target geometry so
+separate conductors are never joined by the transition. New components fade in. Simulation
+frames and slider scrubbing do not trigger configuration transitions.
+
+The motor-wiring and drive-comparison workspaces retain their dedicated animation engines.
+Reduced-motion preferences skip these transitions. Intermediate geometry is a visual aid;
+the final selected configuration is the teaching circuit.
+
 ## Checking the models and comparisons
 
 Run `node --test tests/*.test.cjs` with a current Node.js release. No packages are required.
-The 35 tests compare both the connection data and actual drawn wire geometry with independent catalogue
+The tests compare both the connection data and actual drawn wire geometry with independent catalogue
 maps, check finite morphs and winding identities, validate current balance and pause behaviour, verify
 all 180 NORD/rival pairings and embedded photographs, and parse the executable JavaScript.
 Desktop and 390 px mobile layouts were also checked in a browser.
