@@ -11762,6 +11762,88 @@ navigate=function(...args){const result=flowPreviousNavigate(...args);window.dis
 
 // END MOTOR PHYSICS EXPANSION
 window.addEventListener('message',ev=>{const frame=document.getElementById('physical-board-frame');if(!frame||ev.source!==frame.contentWindow||ev.data?.type!=='nord-board-go')return;const index=slugs.indexOf(ev.data.slug);if(index<0)return;stop();if(ev.data.focus&&['all','ac','rectifier','dc','inverter','motor'].includes(ev.data.focus))settings.drivefocus=ev.data.focus;document.getElementById('physical-board-dialog').close();navigate(index);$('title').scrollIntoView({block:'start'});});
+// BEGIN CONFIGURATION TRANSITIONS
+// Only explicit configuration changes morph; the simulation clock never starts a tween.
+const configMotion = {raf:0, finish:null};
+const configReduced = matchMedia('(prefers-reduced-motion: reduce)');
+function configBlend(a,b,t){return a+(b-a)*t;}
+function configShapeKey(el){
+ const explicit=el.getAttribute('data-motion-key')||el.id;
+ if(explicit)return el.tagName+':'+explicit;
+ if(el.tagName==='text')return 'text:'+el.textContent;
+ return [el.tagName,el.getAttribute('stroke'),el.getAttribute('fill'),el.getAttribute('class')].join(':');
+}
+function configSnapshot(root){
+ const result=new Map();
+ for(const el of root.querySelectorAll('path,line,circle,ellipse,rect,text,polygon,polyline,g')){
+  if(el.closest('defs,clipPath,mask,pattern,marker')||el.tagName==='g'&&!el.hasAttribute('transform'))continue;
+  const key=configShapeKey(el), items=result.get(key)||[];
+  const attrs=Object.fromEntries(Array.from(el.attributes,a=>[a.name,a.value]));
+  let points=null;
+  // Separate subpaths must not acquire a connecting conductor during interpolation.
+  if(el.tagName==='path'&&(attrs.d?.match(/[mM]/g)||[]).length===1){
+   try{const length=el.getTotalLength();if(length>0)points=Array.from({length:65},(_,i)=>{const p=el.getPointAtLength(length*i/64);return [p.x,p.y];});}catch{}
+  }
+  items.push({attrs,points});result.set(key,items);
+ }
+ return result;
+}
+function configCancel(settle=true){
+ cancelAnimationFrame(configMotion.raf);configMotion.raf=0;
+ if(settle)configMotion.finish?.();configMotion.finish=null;
+}
+function configMorph(before){
+ const updates=[],restore=[],counts=new Map();
+ const numeric=['x','y','x1','y1','x2','y2','cx','cy','r','rx','ry','width','height','opacity'];
+ const after=configSnapshot(S);
+ for(const el of S.querySelectorAll('path,line,circle,ellipse,rect,text,polygon,polyline,g')){
+  if(el.closest('defs,clipPath,mask,pattern,marker')||el.tagName==='g'&&!el.hasAttribute('transform'))continue;
+  const key=configShapeKey(el),i=counts.get(key)||0;counts.set(key,i+1);
+  const old=before.get(key)?.[i],target=after.get(key)?.[i];if(!target)continue;
+  const set=(attr,fn)=>{const value=el.getAttribute(attr);restore.push(()=>value===null?el.removeAttribute(attr):el.setAttribute(attr,value));updates.push(t=>el.setAttribute(attr,fn(t)));};
+  if(!old){set('opacity',t=>configBlend(0,Number(target.attrs.opacity??1),t));continue;}
+  for(const attr of numeric){const a=old.attrs[attr],b=target.attrs[attr];if(a!==undefined&&b!==undefined&&a!==b&&Number.isFinite(+a)&&Number.isFinite(+b))set(attr,t=>configBlend(+a,+b,t));}
+  if(old.points&&target.points&&old.attrs.d!==target.attrs.d){
+   set('d',t=>target.points.map((p,j)=>(j?'L':'M')+p.map((v,k)=>configBlend(old.points[j][k],v,t).toFixed(3)).join(' ')).join(' ')+( /[zZ]\s*$/.test(target.attrs.d)?' Z':''));
+  }
+  // SVG transform syntax must agree; otherwise introduce the new component gently.
+  const a=old.attrs.transform,b=target.attrs.transform;
+  if(a&&b&&a!==b){
+   const numbers=/[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi;
+   const av=a.match(numbers)?.map(Number),bv=b.match(numbers)?.map(Number);
+   if(av&&bv&&av.length===bv.length&&a.replace(numbers,'#')===b.replace(numbers,'#'))set('transform',t=>{let j=0;return b.replace(numbers,()=>configBlend(av[j],bv[j++],t));});
+  }
+ }
+ if(!updates.length)return false;
+ const start=performance.now();configMotion.finish=()=>restore.forEach(fn=>fn());
+ const frame=now=>{const t=Math.min(1,(now-start)/520),ease=t*t*(3-2*t);updates.forEach(fn=>fn(ease));if(t<1)configMotion.raf=requestAnimationFrame(frame);else configCancel();};
+ frame(start);return true;
+}
+// Capture before the existing control handler rebuilds the SVG. Match the final
+// render after all synchronous handlers, including simplified-view overrides.
+function configCapture(event){
+ const input=event.target;
+ if([43,45,46].includes(chapter)||configReduced.matches||!input.closest?.('#controls,#workspace,#layer-controls'))return;
+ if(event.type==='change'&&!input.matches('select,input[type="checkbox"],input[type="radio"]'))return;
+ if(event.type==='click'&&!input.closest('button'))return;
+ const page=chapter,signature=JSON.stringify(settings),wasPlaying=playing;
+ // Retarget from the currently displayed geometry when controls change rapidly.
+ const settle=configMotion.finish;configCancel(false);const before=configSnapshot(S);
+ queueMicrotask(()=>{
+  if(page!==chapter||signature===JSON.stringify(settings)||configReduced.matches){settle?.();return;}
+  if(wasPlaying)stop();
+  const moving=configMorph(before);
+  if(wasPlaying&&!moving){play();return;}
+  if(wasPlaying){const finish=configMotion.finish;configMotion.finish=()=>{finish?.();if(page===chapter&&!document.hidden&&!playing)play();};}
+ });
+}
+document.addEventListener('change',configCapture,true);
+document.addEventListener('click',configCapture,true);
+const configPreviousDraw=draw;
+draw=function(){configCancel();return configPreviousDraw();};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)configCancel();});
+configReduced.addEventListener('change',()=>configCancel());
+// END CONFIGURATION TRANSITIONS
 scenes.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+s.nav;b.dataset.chapter=i;b.onclick=()=>navigate(i);$('chapters').appendChild(b);});$('previous').onclick=()=>navigate(chapter-1);$('next').onclick=()=>navigate(chapter+1);$('play').onclick=play;$('scrub').oninput=ev=>{stop();angle=+ev.target.value;motion=angle;if(chapter===4){settings.frequency=angle/3;syncFrequency();}if(chapter===12)syncCurveFrequencyFromTimeline();draw();};$('present').onclick=presentation;$('fullscreen').onclick=fullscreen;$('view-options').onclick=()=>{$('view-menu').hidden=!$('view-menu').hidden;$('view-options').setAttribute('aria-expanded',String(!$('view-menu').hidden));};viewKeys.forEach(k=>$('show-'+k).onchange=view);$('clean').onclick=()=>preset(false);$('detailed').onclick=()=>preset(true);document.addEventListener('pointerdown',ev=>{if(!ev.target.closest('#view-menu,#view-options'))closeOptions();});$('lab-open').onclick=()=>{stop();closeOptions();if(!$('lab-frame').srcdoc){const data=$('lab-data').textContent.trim();$('lab-frame').srcdoc=new TextDecoder().decode(Uint8Array.from(atob(data),c=>c.charCodeAt(0)));}$('lab-dialog').showModal();};$('lab-close').onclick=()=>$('lab-dialog').close();document.addEventListener('keydown',ev=>{if($('lab-dialog').open)return;if(ev.key==='Escape'){if(!$('view-menu').hidden){closeOptions();return;}if(present)presentation();return;}if((ev.target.closest?.('input,select,textarea,summary,[data-jump]')||(ev.target.closest?.('button')&&ev.code==='Space'))||ev.ctrlKey||ev.altKey||ev.metaKey)return;if(ev.key==='ArrowRight'){ev.preventDefault();navigate(chapter+1);}else if(ev.key==='ArrowLeft'){ev.preventDefault();navigate(chapter-1);}else if(ev.code==='Space'){ev.preventDefault();play();}else if(ev.key.toLowerCase()==='p')presentation();else if(ev.key.toLowerCase()==='f')fullscreen();});document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});initialiseAtlas();navigate(routeFromHash());view();
 })();
 </script>
