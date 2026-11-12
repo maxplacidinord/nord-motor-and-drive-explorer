@@ -11229,6 +11229,201 @@ if(Array.isArray(details[20]))details[20].push(card('Wire the motor, brake and t
 if(Array.isArray(details[16]))details[16].push(card('Follow the brake release pair','<p>The brake coil is supplied by its own pair, not by a motor phase. The wiring section follows MB+ and MB− through the connector, notes the inductive load and points to the cable variants that keep the pair twisted and separated from the encoder.</p><p><button data-jump="44">Open wiring, cables and connectors →</button></p>'));
 // END CABLES AND CONNECTORS
 
+// BEGIN MOTOR TERMINAL WIRING — NORD M7000 en-1425 / M5000 en-0626
+// These are connection-node diagrams, not drawings of terminal-board positions.
+// Keep the maps and their source scope together: nine-lead M7000 is Y/YY only.
+const mwSources={
+ m7000:'https://www.nord.com/en/services/documentation/catalogues/details/m7000.jsp',
+ m5000:'https://www.nord.com/en/services/documentation/catalogues/details/m5000.jsp'
+};
+const mwViews=[['iec','IEC star / delta'],['fan','Forced ventilation fan'],['steinmetz','Steinmetz fan circuit'],['dahlander','Dahlander · two speeds'],['nema','NEMA · nine leads'],['pm','IE5+ synchronous motors']];
+const mwMaps={
+ iecStar:[['L1',['U1']],['L2',['V1']],['L3',['W1']],['Join',['W2','U2','V2']]],
+ iecDelta:[['L1',['U1','W2']],['L2',['V1','U2']],['L3',['W1','V2']]],
+ steinmetz:[['L1',['U1','W2']],['N',['V1','U2']],['Third corner',['W1','V2']]],
+ dahlanderLow:[['L1',['1U']],['L2',['1V']],['L3',['1W']]],
+ dahlanderHigh:[['L1',['2U']],['L2',['2V']],['L3',['2W']],['Join',['1U','1V','1W']]],
+ nemaLow:[['L1',['T1','T7']],['L2',['T2','T8']],['L3',['T3','T9']],['Join',['T4','T5','T6']]],
+ nemaHigh:[['L1',['T1']],['L2',['T2']],['L3',['T3']],['Join A',['T4','T7']],['Join B',['T5','T8']],['Join C',['T6','T9']]]
+};
+function mwConfig(){
+ const view=settings.mwView,star=settings.mwConnection==='star',high=settings.mwVoltage==='high';
+ const source=(book,pages)=>maLink(mwSources[book],book.toUpperCase()+' · '+(book==='m7000'?'en-1425':'en-0626')+' · '+pages);
+ const common={view,rows:[],notes:[],open:[],source:source('m7000','A34–A35'),scope:'Connection groups · schematic, not physical terminal positions'};
+ if(view==='iec'){
+  const low=settings.mwPlate==='230400'?230:400,upper=settings.mwPlate==='230400'?400:690;
+  return {...common,title:star?'IEC six terminals · star (Y)':'IEC six terminals · delta (Δ)',badge:'M7000 · asynchronous motor',rows:star?mwMaps.iecStar:mwMaps.iecDelta,
+   summary:'For an example '+low+'/'+upper+' V Δ/Y nameplate, '+(star?'star uses '+upper+' V line-to-line and a shared winding-end junction.':'delta uses '+low+' V line-to-line and three separate winding junctions.'),
+   notes:[star?'Join the three winding ends. The star point does not connect to N or PE.':'Link U1–W2, V1–U2 and W1–V2; feed one line into each junction.','Read the stamped terminal labels: the physical order on a board can differ.','These are alternative rated connections, not instructions for switching a running motor.'],
+   facts:[['Rated line supply',String(star?upper:low)+' V'],['Winding voltage',star?'Line voltage ÷ √3':'Line voltage'],['Nameplate example',low+'/'+upper+' V Δ/Y']],source:source('m7000','A34')};
+ }
+ if(view==='fan'){
+  const hz=settings.mwHz,volts=star?(hz==='50'?'346–525 V':'380–575 V'):(hz==='50'?'200–303 V':'220–332 V');
+  return {...common,title:'External fan · '+(star?'star (Y)':'delta (Δ)'),badge:'M7000 · F / IC416 / TEBC',rows:star?mwMaps.iecStar:mwMaps.iecDelta,
+   summary:'Supply the fan separately from the main motor. It maintains cooling at low shaft speed and can continue cooling when the motor is stopped.',
+   notes:['The diagram below is the fan’s winding connection; use its own nameplate.','Use an independent, suitable fixed-frequency supply, not the variable-frequency motor output.','M7000 recommends motor temperature sensing to protect against failure of the external fan.','Standard catalogue arrangement: frames 63–90 single-phase; 100–250 three-phase. Special 115 V AC and 24 V DC fans have different circuits.'],
+   facts:[['Fan supply',volts+' · '+hz+' Hz · 3~'],['Cooling', 'Independent of main shaft'],['Motor protection','Temperature sensor + evaluation']],source:source('m7000','A24–A25, A35')};
+ }
+ if(view==='steinmetz')return {...common,title:'Steinmetz · single-phase external fan',badge:'M7000 · approved fan arrangement',rows:mwMaps.steinmetz,
+  summary:'The fan’s windings remain linked in delta. A capacitor supplies a phase-shifted current to the third corner from a single-phase supply.',
+  notes:['NORD’s fan diagram: L1 to U1, N to V1, capacitor between W2 and V2 (electrically U1 to W1).','Use the capacitor specified for the fitted fan. There is no universal capacitance or guaranteed rated torque for arbitrary motors.','This is the documented external-fan circuit. It does not make a general three-phase motor or PM motor suitable for a single-phase supply.','N is a supply conductor; protective earth connects separately to the fan frame.'],
+  facts:[['Catalogue fan supply','230–277 V · 50 / 60 Hz · 1~'],['Capacitor','W2 ↔ V2'],['Winding links','Δ · three separate junctions']],source:source('m7000','A35')};
+ if(view==='dahlander'){
+  const fast=settings.mwSpeed==='high';
+  return {...common,title:'Dahlander · '+(fast?'high speed (YY)':'low speed (Δ)'),badge:'M7000 · one pole-changing winding',rows:fast?mwMaps.dahlanderHigh:mwMaps.dahlanderLow,open:fast?[]:['2U','2V','2W'],
+   summary:'One winding is reconnected to change the number of poles. The Δ/YY example gives a 2:1 synchronous-speed ratio at the same supply frequency.',
+   notes:[fast?'Feed 2U / 2V / 2W; join 1U + 1V + 1W.':'Feed 1U / 1V / 1W; leave 2U, 2V and 2W individually unconnected.','Example at 50 Hz: four poles give 1500 rpm synchronous speed; two poles give 3000 rpm. Actual induction-motor speed includes slip.','Dahlander pole changing is different from a star–delta starter and from a motor with two separate windings.','Select the connection diagram and voltage for the actual motor. The selector compares steady states; it is not a live switching sequence.'],
+   facts:[['Selected connection',fast?'YY · double star':'Δ · delta'],['Pole-count example',fast?'2 poles':'4 poles'],['Synchronous speed · 50 Hz',fast?'3000 rpm':'1500 rpm']],source:source('m7000','A34')};
+ }
+ if(view==='nema')return {...common,title:'NEMA nine-lead · '+(high?'high voltage (Y)':'low voltage (YY)'),badge:'M7000 · Y / YY winding only',rows:high?mwMaps.nemaHigh:mwMaps.nemaLow,
+  summary:high?'The paired winding sections are connected in series. Keep each of the three joined pairs isolated from the others.':'The paired winding sections are connected in parallel. Feed T1/T7, T2/T8 and T3/T9, and form the T4/T5/T6 junction.',
+  notes:[high?'Join T4–T7, T5–T8 and T6–T9 separately. L1, L2 and L3 feed T1, T2 and T3.':'Join T4 + T5 + T6 together; do not connect that junction to N or PE.','The high/low voltage ratio is 2:1 for this series/parallel winding, not the √3 ratio of a six-terminal Δ/Y motor.','Nine accessible leads do not identify the internal winding. This map covers the M7000 Y/YY diagram, not a nine-lead delta winding.','T numbers are lead identities, not a physical terminal order. Confirm the motor’s own diagram and both voltage ratings.'],
+  facts:[['Rated line supply',high?'460 V · series Y':'230 V · parallel YY'],['Voltage ratio','2 : 1 · high / low'],['Accessible leads','T1–T9']],source:source('m7000','A34')};
+ return {...common,title:'IE5+ PM motor · inverter supply',badge:'M5000 · synchronous motor',scope:'Functional connections · terminal assignments are motor-specific',
+  summary:'M5000 synchronous motors are operated from a suitable frequency inverter. Use the motor’s own connection diagram and the matching drive motor data.',
+  notes:['Do not connect an M5000 synchronous motor directly to the mains.','M5000 cooling suffix N means IC410 / TENV (no fan); F means IC411 / TEFC (self-ventilated). The F suffix here does not mean the separate external fan described in M7000.','TP1 and TP2 connect the series PTC temperature sensors to a suitable evaluation/tripping device. M5000 specifies 135 °C response and maximum 30 V; that maximum is not a command to apply 24 V.','Do not transfer the Steinmetz, Dahlander or NEMA nine-lead examples to a PM motor. The fitted winding and terminal arrangement govern.'],
+  facts:[['Motor power','Suitable inverter output'],['Temperature sensor','PTC · TP1 / TP2'],['Cooling suffix','N: TENV · F: TEFC']],source:source('m5000','pp. 9, 11, 14')};
+}
+function mwControls(){
+ maSelect('mwView','Motor wiring section',mwViews);
+ if(settings.mwView==='iec')maSelect('mwPlate','Example motor nameplate',[['230400','230 / 400 V · Δ / Y'],['400690','400 / 690 V · Δ / Y']]);
+ if(['iec','fan'].includes(settings.mwView))maSelect('mwConnection','Winding connection',[['star','Y · Star'],['delta','Δ · Delta']]);
+ if(settings.mwView==='fan')maSelect('mwHz','Fan supply frequency',[['50','50 Hz'],['60','60 Hz']]);
+ if(settings.mwView==='dahlander')maSelect('mwSpeed','Pole-changing connection',[['low','Low speed · Δ'],['high','High speed · YY']]);
+ if(settings.mwView==='nema')maSelect('mwVoltage','Nameplate voltage',[['low','230 V · low · YY'],['high','460 V · high · Y']]);
+}
+function mwTerminal(x,y,label,colour=M,parent=S){
+ e('circle',{cx:x,cy:y,r:21,fill:'#112033',stroke:colour,'stroke-width':2},undefined,parent);
+ e('text',{x,y:y+5,'text-anchor':'middle',fill:'#e4edf5',style:'font-size:15px;font-weight:600'},label,parent);
+}
+function mwNodeRows(config){
+ const rows=config.rows,rowH=rows.length>4?61:77,start=142;
+ rows.forEach(([feed,leads],i)=>{
+  const y=start+i*rowH,col=feed==='N'?C[1]:feed==='Third corner'?C[2]:feed.startsWith('L')?C[i%3]:'#a3b9ce';
+  e('rect',{x:34,y:y-31,width:665,height:60,rx:9,fill:i%2?'#101e2e':'#142537'});
+  tx(55,y+5,feed,col,16);
+  const hasFeed=feed.startsWith('L')||feed==='N';
+  const xs=leads.map((_,j)=>246+j*143);
+  if(hasFeed)line(123,y,xs[0]-21,y,col,3);
+  if(leads.length>1)line(xs[0],y,xs.at(-1),y,col,5);
+  leads.forEach((lead,j)=>mwTerminal(xs[j],y,lead,col));
+  if(!hasFeed&&feed!=='Third corner')tx(665,y+4,'isolated joint',M,12,'','end');
+ });
+ let next=start+rows.length*rowH;
+ if(config.open.length){
+  tx(55,next+4,'Open',M,15);config.open.forEach((lead,j)=>mwTerminal(246+j*143,next,lead,'#60758a'));
+  tx(55,next+40,'Unconnected individually · no links between these terminals',M,13);next+=63;
+ }
+ if(config.view==='steinmetz'){
+  // The capacitor joins the first and third delta corners; it is never a wire link.
+  const x=624,y1=start,y2=start+rowH*2,mid=(y1+y2)/2;
+  line(410,y1,x,y1,C[0],2);line(x,y1,x,mid-8,C[0],2);
+  line(x-18,mid-8,x+18,mid-8,L,3);line(x-18,mid+8,x+18,mid+8,L,3);
+  line(x,mid+8,x,y2,C[2],2);line(410,y2,x,y2,C[2],2);
+  tx(x+28,mid+5,'C',L,17);next+=8;
+ }
+ const peY=Math.max(next+12,490);
+ line(123,peY,225,peY,G,3);tx(55,peY+5,'PE',G,16);
+ e('rect',{x:226,y:peY-19,width:190,height:38,rx:8,fill:'#172c2b',stroke:'#5e9478'});
+ tx(321,peY+5,config.view==='fan'||config.view==='steinmetz'?'Fan frame':'Motor frame',G,15,'','middle');
+ tx(55,peY+46,'Each horizontal group is one electrical junction.',M,14);
+ tx(55,peY+68,'Separate rows must remain separate.',M,14);
+ return peY+93;
+}
+function mwPmDiagram(){
+ const ys=[154,279,404],labels=[['Inverter','Motor power','Motor windings',C[0]],['PTC evaluation','TP1 / TP2','Temperature sensors',C[1]],['Protective earth','PE','Motor frame',G]];
+ labels.forEach(([a,b,c,col],i)=>{
+  const y=ys[i];
+  e('rect',{x:42,y:y-32,width:202,height:64,rx:10,fill:'#142537',stroke:'#3d536a'});tx(143,y+5,a,col,17,'','middle');
+  line(245,y,463,y,col,3);tx(354,y-14,b,col,14,'','middle');
+  e('rect',{x:464,y:y-32,width:224,height:64,rx:10,fill:'#142537',stroke:'#3d536a'});tx(576,y+5,c,col,16,'','middle');
+ });
+ tx(55,499,'Three distinct functions · use the fitted motor’s diagram.',M,14);
+ return 561;
+}
+function mwDraw(){
+ const config=mwConfig();maFrame(620);S.setAttribute('data-motor-wiring-view',config.view);
+ tx(36,41,config.title,'#e5edf5',25);tx(36,72,config.scope,M,14);
+ const height=config.view==='pm'?mwPmDiagram():mwNodeRows(config);
+ maFrame(Math.max(620,height));
+ line(725,107,725,Math.max(565,height-35),'#2e435a',1);
+ tx(752,137,config.badge,L,14);
+ config.facts.forEach(([label,value],i)=>{
+  const y=197+i*112;tx(752,y,label,M,14);
+  // Keep annotation lines inside the fixed SVG panel.
+  const parts=value.length>32?value.split(' · '):[value];
+  parts.forEach((p,j)=>tx(752,y+29+j*24,p,'#e4edf5',p.length>35?15:18));
+ });
+ tx(752,540,'Links shown are de-energised',M,13);tx(752,563,'configuration examples.',M,13);
+ mwRenderReading(config);
+ $('takeaway').textContent='Identify the fitted winding and read its diagram before choosing links. Isolate all supplies before changing connections; prove dead and account for stored capacitor energy.';
+ metrics(config.facts);
+}
+function mwRenderReading(config){
+ let panel=$('mw-reading');
+ if(!panel){panel=document.createElement('div');panel.id='mw-reading';panel.setAttribute('aria-live','polite');S.closest('.diagram-viewport').after(panel);}
+ panel.hidden=false;
+ const tableRows=config.rows.map(([feed,leads])=>'<tr><th scope="row">'+maEscape(feed)+'</th><td>'+leads.map(maEscape).join(' + ')+'</td></tr>');
+ if(config.open.length)tableRows.push('<tr><th scope="row">Leave open</th><td>'+config.open.map(maEscape).join(', ')+' — individually</td></tr>');
+ if(config.view==='steinmetz')tableRows.push('<tr><th scope="row">Capacitor</th><td>W2 ↔ V2 (U1 ↔ W1)</td></tr>');
+ if(config.view!=='pm')tableRows.push('<tr><th scope="row">PE</th><td>'+(['fan','steinmetz'].includes(config.view)?'Fan':'Motor')+' frame</td></tr>');
+ panel.innerHTML='<div class="mw-intro"><span>'+maEscape(config.badge)+'</span><h2>'+maEscape(config.title)+'</h2><p>'+maEscape(config.summary)+'</p></div><div class="mw-reading-grid">'+
+  (tableRows.length?'<table><caption>Connection map · + means joined</caption><thead><tr><th scope="col">Supply / group</th><th scope="col">Terminals</th></tr></thead><tbody>'+tableRows.join('')+'</tbody></table>':'<dl>'+config.facts.map(([a,b])=>'<div><dt>'+maEscape(a)+'</dt><dd>'+maEscape(b)+'</dd></div>').join('')+'</dl>')+
+  '<div class="mw-notes"><h3>Read this connection</h3><ul>'+config.notes.map(n=>'<li>'+maEscape(n)+'</li>').join('')+'</ul></div></div><p class="mw-source">Source: '+config.source+'. Terminal maps are redrawn from the cited catalogue. The supplied motor/fan diagram and nameplate govern.</p>';
+}
+maRegister(45,{
+ slug:'motor-wiring',nav:'Motor wiring',title:'Motor wiring and auxiliary cooling',
+ sub:'Read the winding before the links: IEC star/delta, separate fan supplies, Steinmetz, Dahlander and NEMA nine-lead connections, with M5000 synchronous-motor distinctions.',
+ idea:'Terminal labels identify winding ends. Links decide which ends share an electrical node. IEC star/delta, Dahlander pole changing and NEMA series/parallel reconnection use different windings and serve different purposes. A cooling fan and the main motor can also require independent supplies.',
+ limit:'Original educational connection-node diagrams based on NORD M7000 en-1425 and M5000 en-0626. The drawings show electrical junctions, not physical terminal positions. No circuit protection, interlocked contactor sequence or installation design is supplied. Use the nameplate and connection diagram for the fitted motor and fan; isolate all supplies and address stored energy before altering wiring.',
+ take:'Match the circuit to the fitted motor, winding, supply and cooling option.',stage:'motor',parent:44,related:[44,20,4,21,37,26],
+ defaults:{mwView:'iec',mwConnection:'star',mwPlate:'230400',mwHz:'50',mwSpeed:'low',mwVoltage:'low'},
+ controlsTitle:'Choose a connection',controlsNote:'The controls compare static wiring arrangements. They do not operate or model switching of energised equipment.',controls:mwControls,draw:mwDraw,
+ details:[
+  card('Three ways of reconnecting a winding',
+   '<p><b>IEC Δ/Y</b> changes the voltage across each complete winding. The two rated line voltages differ by approximately √3. <b>NEMA Y/YY</b> reconnects paired winding sections in series or parallel, giving a 2:1 high/low voltage ratio. <b>Dahlander Δ/YY</b> changes pole count, giving two synchronous speeds in a 2:1 ratio. Similar symbols do not make these circuits interchangeable.</p><p>The NEMA view deliberately follows the nine-lead Y/YY diagram in M7000 A34. A nine-lead delta winding needs its own connection diagram.</p>'),
+  card('Cooling is part of the connection design',
+   '<p>At sustained low shaft speed, a shaft-mounted fan may provide insufficient cooling. M7000 describes separately powered forced ventilation for duties such as high torque at low speed and frequent cycling. The fan must be connected independently of the main motor; the catalogue recommends temperature sensing in the motor to protect against fan failure.</p><p>The Steinmetz view is the capacitor arrangement NORD publishes for its applicable external fans. Capacitance, voltage, frequency, protection and fan variant come from the fan data, not a generic rule of thumb.</p>'),
+  card('Read F in the right catalogue',
+   '<p>In the cited <b>M7000</b> section, F denotes an external fan, IC416 / TEBC. In <b>M5000</b>, F denotes a self-ventilated IE5+ motor, IC411 / TEFC; N denotes no fan, IC410 / TENV. The letter alone is insufficient to select or wire the cooling arrangement.</p><p>M5000 motors require a suitable inverter. Keep motor power, protective earth and the TP1/TP2 PTC evaluation circuit distinct, and use the supplied diagram for the actual winding and options.</p>')
+ ],sources:maLink(mwSources.m7000,'NORD M7000 · English edition 1425 · A24–A25 and A34–A35')+'; '+maLink(mwSources.m5000,'NORD M5000 · English edition 0626 · pp. 9, 11, 14')+'.'
+});
+// Integrate both the full lesson journey and the simplified topic navigation.
+const mwJourney=maJourney.find(t=>t.short==='Wiring');
+if(mwJourney){mwJourney.views.push([45,'Motor wiring and auxiliary cooling']);mwJourney.teaser='Cables, connectors, motor terminals and independent cooling supplies.';const group=maJourney.indexOf(mwJourney);maJourneyByPage.set(45,{topic:mwJourney,group,view:mwJourney.views.length-1,label:'Motor wiring and auxiliary cooling'});}
+const mwTopicGroup=maTopicGroups.find(([name])=>name==='Cables and wiring');if(mwTopicGroup)mwTopicGroup[1].push(45);
+const mwOrder=lessonOrder.indexOf(44);if(!lessonOrder.includes(45))lessonOrder.splice(mwOrder+1,0,45);
+const mwTopic=scTopics.find(t=>t.primary===44);mwTopic.core.push([45,'Motor wiring']);mwTopic.pages.push(45);scByPage.set(45,{topic:mwTopic,i:scTopics.indexOf(mwTopic)});scCore.add(45);
+scEssential[45]=['mwView','mwPlate','mwConnection','mwHz','mwSpeed','mwVoltage'];
+scCaptions[45]=['Motor wiring and auxiliary cooling','Compare the actual connection groups for IEC windings, cooling fans, Dahlander and NEMA nine-lead motors.'];
+for(const id of [44,20,37]){if(!related[id].includes(45))related[id].push(45);if(funnels[id]&&!funnels[id].includes(45))funnels[id].push(45);}
+details[44].unshift(card('Continue from the cable to the motor terminals','<p>Star/delta links, a separately powered cooling fan, Steinmetz capacitor wiring, Dahlander pole changing and NEMA T1–T9 series/parallel connections are covered in the motor wiring lesson, with catalogue-specific maps.</p><p><button data-jump="45">Open motor wiring →</button></p>'));
+const mwPreviousDraw=draw;
+draw=function(){mwPreviousDraw();document.body.classList.toggle('motor-wiring-page',chapter===45);if($('mw-reading'))$('mw-reading').hidden=chapter!==45;if(chapter!==45)S.removeAttribute('data-motor-wiring-view');};
+const mwStyle=document.createElement('style');mwStyle.textContent=`
+ .sc-clear.motor-wiring-page:not(.present) #scene{max-height:none}
+ #mw-reading{padding:24px 26px 21px;border-top:1px solid #2c4259;background:#101e2e}
+ #mw-reading .mw-intro>span{font-size:11px;color:#a9c690;letter-spacing:.05em}
+ #mw-reading h2{font-size:20px;color:#e2edf6;font-weight:550;margin:8px 0 10px;line-height:1.3}
+ #mw-reading p{font-size:14px;line-height:1.75;color:#b9cbdc;margin:0 0 17px;max-width:82ch}
+ #mw-reading .mw-reading-grid{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(260px,1.2fr);gap:24px;align-items:start}
+ #mw-reading table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.5}
+ #mw-reading caption{text-align:left;font-size:12px;color:#98b0c7;margin-bottom:10px}
+ #mw-reading th,#mw-reading td{padding:10px 9px;border-bottom:1px solid #2c4155;text-align:left;vertical-align:top}
+ #mw-reading thead th{font-size:11px;color:#99afc4;font-weight:500}
+ #mw-reading tbody th{color:#d6e5f1;font-weight:500;white-space:nowrap}
+ #mw-reading td{color:#bed2e3;font-variant-numeric:tabular-nums}
+ #mw-reading h3{font-size:13px;font-weight:550;color:#e1ecf5;margin:0 0 10px}
+ #mw-reading ul{padding-left:18px;margin:0}#mw-reading li{font-size:13px;line-height:1.75;color:#aebfd0;margin-bottom:10px}
+ #mw-reading .mw-source{border-top:1px solid #2c4155;margin:19px 0 0;padding-top:13px;font-size:11px;line-height:1.8;max-width:none;color:#8fa7bc}
+ #mw-reading a{color:#9fd6ff;text-underline-offset:3px}
+ #mw-reading dl{margin:0}#mw-reading dl div{padding:11px 0;border-bottom:1px solid #2c4155}#mw-reading dt{font-size:11px;color:#8fa7bc}#mw-reading dd{margin:7px 0 0;font-size:15px;color:#d5e4ef}
+ .present #mw-reading{display:none!important}
+ @media(max-width:800px){.motor-wiring-page:not(.present) #controls{grid-row:1}.motor-wiring-page:not(.present) .workspace>.visual{grid-row:2}}
+ @media(max-width:650px){#mw-reading{padding:20px 16px}#mw-reading .mw-reading-grid{grid-template-columns:minmax(0,1fr);gap:22px}#mw-reading h2{font-size:19px}#mw-reading table{font-size:14px}#mw-reading li{font-size:14px}.motor-wiring-page:not(.present) #scene{min-width:670px!important}.motor-wiring-page:not(.present) .diagram-viewport{overflow-x:auto}}
+`;document.head.append(mwStyle);
+// END MOTOR TERMINAL WIRING
+
 // FLOW_CORE_BRIDGE
 window.NordFlowCore={
  topics:scTopics,canonical:canonicalLesson,

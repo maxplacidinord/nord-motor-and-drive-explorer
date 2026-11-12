@@ -2,7 +2,7 @@
 
 A self-contained, single-file interactive atlas for drive and motor engineering: power circuits, modulation,
 motor physics, encoder and tuning behaviour, functional safety, communications, motor failure, and now
-**cables and connectors**.
+**cables, connectors and motor wiring**.
 
 Open `NORD-motor-and-drive-explorer.html` in any modern browser. No build step, no server, no dependencies.
 Everything — styles, SVG scenes, models, embedded reference documents — lives in the one file (about 1.8 MB).
@@ -94,12 +94,58 @@ The field photographs in chapter 43 are embedded from Wikimedia Commons:
 
 They are reproduced unmodified apart from resizing, with attribution in the page itself.
 
+## The motor wiring chapter
+
+**Motor wiring** is a dedicated lesson within **Wiring & cables**, reachable at:
+
+```
+NORD-motor-and-drive-explorer.html#motor-wiring
+```
+
+The section selector changes the terminal drawing and its readable connection map together:
+
+- **IEC terminal links** — six-terminal star and delta connections, with winding-voltage context.
+- **Forced ventilation** — the separate supply to an external cooling fan, independent of the drive's
+  variable-frequency motor output, with the catalogue's fan connection options.
+- **Steinmetz** — the documented single-phase external-fan circuit, showing the capacitor and delta
+  links. This example is not permission to convert any three-phase main motor to single-phase operation.
+- **Dahlander** — the documented low-speed delta and high-speed double-star arrangements, with a
+  comparison to separate-winding pole-switchable motors.
+- **NEMA T1–T9** — the M7000 230/460 V nine-lead motor: parallel YY at low voltage and series Y at
+  high voltage. The guide distinguishes this 2:1 voltage ratio from IEC star/delta's √3 ratio.
+- **M5000 synchronous motors** — inverter-fed PM motor connections, temperature-sensor protection,
+  and cooling choices without applying induction-motor circuits indiscriminately.
+
+Original SVG drawings use the atlas's existing palette. The connection tables remain readable on small
+screens, and references identify the catalogue edition and printed page. All content works offline;
+source links open the manufacturer catalogue pages when online.
+
+Sources: NORD **M7000, English edition 1425**, especially A24–A25 (external fans), A34 (motor circuit
+diagrams) and A35 (external-fan circuits); **M5000, English edition 0626**, especially pages 9, 11 and 14.
+
+- [M7000 catalogue and downloads](https://www.nord.com/en/services/documentation/catalogues/details/m7000.jsp)
+- [M5000 catalogue and downloads](https://www.nord.com/en/services/documentation/catalogues/details/m5000.jsp)
+
+The editions above were checked in NORD-authored PDFs hosted by a distributor:
+[M7000 1425](https://gearboxbuddy.com/wp-content/themes/gearboxbuddy-rfq-draft/site/assets/download-library/document-039.pdf)
+and [M5000 0626](https://gearboxbuddy.com/wp-content/themes/gearboxbuddy-rfq-draft/site/assets/download-library/document-040.pdf).
+The manufacturer pages above provide the official catalogue entry points.
+
+These are labelled teaching configurations. The motor and fan nameplates and the connection diagram
+supplied with the actual unit determine its wiring; terminal position alone is not a connection identifier.
+
 ## Using the atlas
 
 - `Home` returns to the interactive power circuit.
 - Click highlighted parts of a drawing to step into the matching lesson.
 - `Present` hides the editing chrome for a walkthrough; `View options` controls labels, guides and readouts.
 - Lesson URLs use the hash, for example `#motor`, `#vf-flux`, `#motor-failure`.
+
+## Checking the motor wiring models
+
+Run `node --test tests/motor-wiring.test.cjs` with a current Node.js release. No packages are required.
+The checks compare electrical junctions with independently transcribed catalogue maps, account for all
+terminals, validate fan voltage ranges and motor nameplate examples, and parse the embedded JavaScript.
 
 ## Repository
 
