@@ -11307,10 +11307,10 @@ function mwCoilPoints(a,b){
  return Array.from({length:65},(_,i)=>{const t=i/64,u=(t-.16)/.68,z=t<.16||t>.84?0:-Math.abs(Math.sin(u*Math.PI*6))*14;return[a[0]+dx*t+nx*z,a[1]+dy*t+ny*z];});
 }
 function mwBuildScene(c){
- const d={paths:{},labels:{},fixed:'',view:c.view,rotor:null};
+ const d={paths:{},labels:{},fixed:'',view:c.view,pose:c.view==='dahlander'?settings.mwSpeed:null,rotor:null};
  const wire=(id,p,col='#88a8c2',opts={})=>d.paths[id]={points:mwResample(p),col,kind:'wire',opacity:1,...opts};
  const coil=(id,a,b,col,ends)=>d.paths[id]={points:mwCoilPoints(a,b),col,kind:'coil',ends,opacity:1};
- const label=(id,p,text,col='#b9cadb',size=14)=>d.labels[id]={p,text,col,size,opacity:1};
+ const label=(id,p,text,col='#b9cadb',size=14,opts={})=>d.labels[id]={p,text,col,size,opacity:1,...opts};
  const node=(id,p,text,col='#d9e6f2',offset=[0,-15])=>{label(id,[p[0]+offset[0],p[1]+offset[1]],text,col);wire('dot-'+id,[p,p],col,{kind:'node'});};
  const text=(x,y,t,col='#94aabe',size=13,anchor='start')=>'<text x="'+x+'" y="'+y+'" fill="'+col+'" font-size="'+size+'" text-anchor="'+anchor+'">'+maEscape(t)+'</text>';
  const panel=(x,y,w,h)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="12" fill="#101f30" stroke="#2c4358"/>';
@@ -11320,16 +11320,18 @@ function mwBuildScene(c){
   const delta=c.view==='steinmetz'||settings.mwConnection==='delta';
   const fan=c.view==='fan';const scale=fan?.70:1,off=fan?[315,85]:[0,0];
   const P=p=>[p[0]*scale+off[0],p[1]*scale+off[1]];
-  const base=delta?{U1:[300,180],U2:[580,180],V1:[640,230],V2:[500,465],W1:[440,465],W2:[240,230]}:{U1:[260,160],U2:[420,290],V1:[690,160],V2:[540,290],W1:[480,530],W2:[480,385]};
+  // Keep the incoming ends anchored. Reconnection moves winding ends and links,
+  // rather than translating complete phases around the triangle.
+  const base=c.view==='steinmetz'?{U1:[300,180],U2:[580,180],V1:[640,230],V2:[500,465],W1:[440,465],W2:[240,230]}:delta?{U1:[260,160],U2:[620,160],V1:[690,160],V2:[515,470],W1:[480,530],W2:[295,220]}:{U1:[260,160],U2:[420,290],V1:[690,160],V2:[540,290],W1:[480,530],W2:[480,385]};
   const p=Object.fromEntries(Object.entries(base).map(([k,v])=>[k,P(v)]));
   [['U','U1','U2'],['V','V1','V2'],['W','W1','W2']].forEach(([name,a,b],i)=>{coil('iec-'+name,p[a],p[b],C[i],[a,b]);node(a,p[a],a,C[i],[-4,-15]);node(b,p[b],b,C[i],[5,22]);});
   if(delta){
-   wire('link-U',[p.U2,P([640,180]),p.V1],C[1]);wire('link-V',[p.V2,p.W1],C[2]);wire('link-W',[p.W2,P([240,180]),p.U1],C[0]);
+   wire('link-U',c.view==='steinmetz'?[p.U2,P([640,180]),p.V1]:[p.U2,p.V1],C[1]);wire('link-V',[p.V2,p.W1],C[2]);wire('link-W',c.view==='steinmetz'?[p.W2,P([240,180]),p.U1]:[p.W2,p.U1],C[0]);
   }else{
    ['U2','V2','W2'].forEach((n,i)=>wire(['link-U','link-V','link-W'][i],[p[n],P([480,335])],'#d3e2ef'));
    node('star',P([480,335]),'Star point · no N',L,[45,8]);
   }
-  const feedPoints=delta?[[90,180],[840,230],[440,565]]:[[90,160],[860,160],[480,590]];
+  const feedPoints=c.view==='steinmetz'?[[90,180],[840,230],[440,565]]:[[90,160],[860,160],[480,590]];
   const leadPoints=[p.U1,p.V1,p.W1];
   for(let i=0;i<(c.view==='steinmetz'?2:3);i++){
    const a=P(feedPoints[i]);wire('feed-'+i,[a,leadPoints[i]],C[i]);label('supply-'+i,[a[0],a[1]-18],c.view==='steinmetz'?(i?'N':'L1'):'L'+(i+1),C[i],17);
@@ -11373,13 +11375,18 @@ function mwBuildScene(c){
   pe(35,625,'PE goes to the frame, not either star point');
  }else if(c.view==='dahlander'){
   const high=settings.mwSpeed==='high';
-  const p=high?{'2U':[490,130],'2V':[740,460],'2W':[240,460],'1U':[425,310],'1W':[555,310],'1V':[490,380]}:{'1U':[490,130],'2W':[615,280],'1V':[740,460],'2V':[490,460],'1W':[240,460],'2U':[365,280]};
+  // Preserve the six terminals' circular order and each coil's direction.
+  // Corners draw inward and midpoints spread outward in their existing sectors;
+  // rotating the YY layout would turn the ring inside out during the tween.
+  const p=high?{'1U':[490,275],'2W':[690,235],'1V':[550,370],'2V':[490,505],'1W':[430,370],'2U':[290,235]}:{'1U':[490,130],'2W':[615,280],'1V':[740,460],'2V':[490,460],'1W':[240,460],'2U':[365,280]};
   const ring=['1U','2W','1V','2V','1W','2U'];
   ring.forEach((name,i)=>{const next=ring[(i+1)%6];coil('dcoil'+i,p[name],p[next],C[Math.floor(i/2)],[name,next]);});
-  Object.entries(p).forEach(([name,point])=>node(name,point,name,name[0]==='2'?L:'#dce7f2',[0,name==='1V'?26:-18]));
+  const offsets={'1U':[0,-18],'2W':[0,-18],'1V':[10,24],'2V':[12,14],'1W':[-38,24],'2U':[-28,-18]};
+  Object.entries(p).forEach(([name,point])=>node(name,point,name,name[0]==='2'?L:'#dce7f2',high?offsets[name]:[0,name==='1V'?26:-18]));
   const feedNames=high?['2U','2V','2W']:['1U','1V','1W'];
-  const starts=[[490,90],[850,500],[130,500]];
-  feedNames.forEach((n,i)=>{wire('dfeed'+i,[starts[i],p[n]],C[i]);label('dline'+i,[starts[i][0],starts[i][1]+(i?24:-14)],'L'+(i+1),C[i],17);});
+  const starts=high?[[155,235],[490,545],[825,235]]:[[490,90],[850,500],[130,500]];
+  const lineLabels=high?[[155,217],[510,545],[825,217]]:starts.map((p,i)=>[p[0],p[1]+(i?24:-14)]);
+  feedNames.forEach((n,i)=>{wire('dfeed'+i,[starts[i],p[n]],C[i],{reconnect:true});label('dline'+i,lineLabels[i],'L'+(i+1),C[i],17,{reconnect:true});});
   const join=[490,335];['1U','1V','1W'].forEach((name,i)=>wire('dshort'+i,high?[p[name],join]:[p[name],p[name]],L,{opacity:high?1:0}));
   if(high)node('dstar',join,'Common joint',L,[125,0]);
   d.fixed+=text(35,567,high?'Feed the three midpoints. Each supply phase now sees two winding sections in parallel.':'Feed the three corners. Each delta side contains two series winding sections.','#b9ccdc',14);
@@ -11456,14 +11463,21 @@ function mwUpdateTransport(){
 }
 function mwStart(){if(chapter===45&&!mwMotion.raf){mwMotion.last=performance.now();mwMotion.raf=requestAnimationFrame(mwFrame);}}
 function mwInterpolate(a,b,t){
- const result={...b,paths:{},labels:{}};
+ const reconnect=a?.view==='dahlander'&&b.view==='dahlander'&&a.pose!==b.pose;
+ // Remove the old supply stubs before reshaping, then introduce the new feeds.
+ // Their phase identities change terminals; dragging them through the winding
+ // would add a misleading cross-diagram sweep. A null pose preserves this
+ // sequence when another selection interrupts a transition.
+ const k=reconnect?Math.max(0,Math.min(1,(t-.2)/.6)):t;
+ const supply=(x,y)=>{const p=t<.2?x:y,alpha=t>=1?1:t<.2?1-t/.2:t>.8?(t-.8)/.2:0;return {...p,opacity:p.opacity*alpha};};
+ const result={...b,pose:reconnect&&t<1?null:b.pose,paths:{},labels:{}};
  for(const id of new Set([...Object.keys(a?.paths||{}),...Object.keys(b.paths)])){
   const x=a?.paths[id]||{...b.paths[id],opacity:0},y=b.paths[id]||{...a.paths[id],opacity:0};
-  result.paths[id]={...y,opacity:x.opacity+(y.opacity-x.opacity)*t,points:y.points.map((p,i)=>[x.points[i][0]+(p[0]-x.points[i][0])*t,x.points[i][1]+(p[1]-x.points[i][1])*t])};
+  result.paths[id]=reconnect&&y.reconnect?supply(x,y):{...y,opacity:x.opacity+(y.opacity-x.opacity)*k,points:y.points.map((p,i)=>[x.points[i][0]+(p[0]-x.points[i][0])*k,x.points[i][1]+(p[1]-x.points[i][1])*k])};
  }
  for(const id of new Set([...Object.keys(a?.labels||{}),...Object.keys(b.labels)])){
   const x=a?.labels[id]||{...b.labels[id],opacity:0},y=b.labels[id]||{...a.labels[id],opacity:0};
-  result.labels[id]={...y,opacity:x.opacity+(y.opacity-x.opacity)*t,p:[x.p[0]+(y.p[0]-x.p[0])*t,x.p[1]+(y.p[1]-x.p[1])*t]};
+  result.labels[id]=reconnect&&y.reconnect?supply(x,y):{...y,opacity:x.opacity+(y.opacity-x.opacity)*k,p:[x.p[0]+(y.p[0]-x.p[0])*k,x.p[1]+(y.p[1]-x.p[1])*k]};
  }
  return result;
 }
