@@ -147,27 +147,34 @@ NORD-motor-and-drive-explorer.html#drive-comparison
 
 The comparison workspace contains:
 
-- **Compare families** — two large manufacturer photographs, practical application notes, and a
-  nine-row table covering installation, rating, control, motors, communications, safety, positioning,
-  braking and commissioning. Related alternatives are suggested; cross-category choices are identified.
+- **Compare drives** — compact product photographs followed immediately by the differences in
+  positioning, Ethernet, STO, safe-speed monitoring where established, and mains regeneration. Each
+  point shows both selected families, its model/option/software conditions, a manufacturer reference,
+  and the consequence for a specification. Capability gaps and provision differences are distinguished;
+  an undocumented function is shown as an evidence gap, never treated as unavailable. The full nine-row
+  specification table, application notes and document list expand on demand.
 - **Explore the NORD range** — an illustrated family-by-family guide, including the difference between
   starters and inverters and the lifecycle context of older devices.
-- **Manufacturer approaches** — Siemens, SEW-EURODRIVE, ABB, Danfoss, Schneider Electric, Yaskawa and
-  Beckhoff, with 20 competing product families. Design-philosophy assessments are labelled editorial
-  interpretations of the documented products, not official company strategies.
-- **Animated NORD installation architecture** — move the drive between cabinet, field and motor
-  mounting to see power and command routes rearrange, then play or pause the illustrative flow.
+- **Manufacturers** — an expandable manufacturer index covering Siemens, SEW-EURODRIVE, ABB, Danfoss,
+  Schneider Electric, Yaskawa and Beckhoff, with 20 competing product families and a specific technical
+  briefing for each competitor. Design-philosophy assessments are labelled editorial interpretations
+  of the documented products, not official company strategies.
+- **Animated NORD installation architecture** — expand the installation view, move the drive between
+  cabinet, field and motor mounting to see power and command routes rearrange, then play or pause the
+  illustrative flow. The enquiry checklist also expands separately to keep the comparison focused.
 
 Features are qualified by model, option and complete order code. A brake chopper is not presented as
 mains regeneration, safety is not assumed across every family variant, and servo systems are identified
-as architectural alternatives rather than automatic VFD replacements. Sources were reviewed on
-12 November 2026. Published ratings are family ranges, not a substitute for sizing against duty and voltage.
+as architectural alternatives rather than automatic VFD replacements. The portfolio was reviewed on
+12 November 2026; the comparison and targeted feature evidence were updated on 13 November 2026.
+Published ratings are family ranges, not a substitute for sizing against duty and voltage. See the
+[comparison evidence notes](docs/drive-comparison-evidence.md) for the principal documents and limits.
 
 Product photographs are embedded for offline use, resized from official manufacturer sources and
 credited beside each image. Product names and photographs remain the respective manufacturers' property.
 The comparison is an independent educational reference, not manufacturer endorsement.
 
-![Drive comparison preview](docs/drive-comparison-preview.jpg)
+The earlier comparison screenshot in `docs/drive-comparison-preview.jpg` predates the current layout.
 
 ## Using the atlas
 
@@ -197,8 +204,14 @@ the final selected configuration is the teaching circuit.
 Run `node --test tests/*.test.cjs` with a current Node.js release. No packages are required.
 The tests compare both the connection data and actual drawn wire geometry with independent catalogue
 maps, check finite morphs and winding identities, validate current balance and pause behaviour, verify
-all 180 NORD/rival pairings and embedded photographs, and parse the executable JavaScript.
-Desktop and 390 px mobile layouts were also checked in a browser.
+all 180 NORD/rival pairings and embedded photographs, and parse the executable JavaScript. Feature
+checks cover POSICON versus G120C, standard versus selected STO provision, regenerative suffixes,
+separate regenerative hardware, IMC firmware, and safe-speed monitoring independently of STO.
+Unknown capabilities cannot produce a directional advantage.
+
+The current comparison uses stacked feature rows on narrow screens and retains the full table inside
+an expandable horizontal-scrolling region. Browser rendering could not be checked for the 13 November
+comparison revision because this execution environment blocks the local preview.
 
 ## Repository
 

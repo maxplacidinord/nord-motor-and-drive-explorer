@@ -10,7 +10,7 @@ const end=html.indexOf('let dcRenderKey',start);
 assert.ok(start>0&&end>start);
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const context=vm.createContext({settings:{},maEscape:esc,maLink:(url,label)=>`<a href="${esc(url)}">${esc(label)}</a>`});
-vm.runInContext(html.slice(start,end)+'\nthis.api={products:dcProducts,nord:dcNord,rivals:dcRivals,config:dcConfig,setNord:dcSetNord,compare:dcCompare,range:dcRange,makers:dcManufacturers,spec:dcSpec};',context);
+vm.runInContext(html.slice(start,end)+'\nthis.api={products:dcProducts,nord:dcNord,rivals:dcRivals,config:dcConfig,setNord:dcSetNord,compare:dcCompare,range:dcRange,makers:dcManufacturers,spec:dcSpec,findings:dcFindings,assess:dcAssess,byId:dcById};',context);
 const api=context.api;
 
 test('Portfolio records resolve to credited offline photographs and primary evidence',()=>{
@@ -59,4 +59,99 @@ test('Range and manufacturer articles expose every product without temporary fil
  for(const p of api.products)assert.ok(makers.includes(esc(p.name)));
  for(const output of [range,makers])assert.ok(!output.includes('/tmp/'));
  assert.match(makers,/editorial inferences/);
+});
+
+test('Every feature finding has primary evidence and unknown never means unavailable',()=>{
+ const states=new Set(['standard','option','variant','licence','system','external','absent','unknown']);
+ for(const p of api.products){
+  for(const key of ['networks','positioning','safety','regeneration']){
+   const f=p.evidence[key];assert.ok(f,`${p.id}: ${key}`);
+   assert.ok(states.has(f.state));assert.ok(f.label&&f.text);
+   assert.equal(new URL(f.url).protocol,'https:');
+  }
+  if(p.maker!=='NORD')assert.ok(p.briefing?.text&&p.briefing?.url);
+ }
+ for(const state of states)for(const pair of [['unknown',state],[state,'unknown']]){
+  const f=api.assess({state:pair[0]},{state:pair[1]});
+  assert.equal(f.kind,'check');assert.equal(f.label,'Evidence gap');
+ }
+ // A separate regenerative unit is not an integrated capability advantage.
+ for(const pair of [['absent','external'],['external','absent'],['external','standard']]){
+  assert.equal(api.assess({state:pair[0]},{state:pair[1]}).kind,'different');
+ }
+});
+
+test('G120C comparison explains both POSICON and the different STO provision',()=>{
+ const n=api.byId('pro500p'),c=api.byId('siemens-g120c'),f=api.findings(n,c);
+ assert.equal(f.find(x=>x.key==='positioning').kind,'nord');
+ assert.equal(f.find(x=>x.key==='safety').kind,'rival');
+ const output=api.compare(n,c);
+ assert.match(output,/No drive-integrated position control/);
+ assert.match(output,/optional dual-channel CU5-STO/);
+ assert.match(output,/not a claim that NORD cannot do it/);
+ assert.ok(output.indexOf('What is missing or needs adding?')<output.indexOf('All specifications'));
+ assert.match(output,/<details class="dc-disclosure dc-full-specs">/);
+});
+
+test('Regeneration remains scoped to the actual topology and variant',()=>{
+ const n=api.byId('flex');
+ const g=api.findings(n,api.byId('siemens-g120d')).find(f=>f.key==='regeneration');
+ assert.equal(g.kind,'rival');assert.equal(g.b.state,'standard');
+ const abb=api.findings(n,api.byId('abb-acs880')).find(f=>f.key==='regeneration');
+ assert.equal(abb.b.state,'variant');assert.match(abb.b.text,/-11\/-14\/-17/);
+ const fc=api.findings(n,api.byId('danfoss-fc302')).find(f=>f.key==='regeneration');
+ assert.equal(fc.kind,'different');assert.equal(fc.b.state,'external');
+});
+
+test('Safe-speed capability is distinct from STO and qualified to its manual',()=>{
+ const n=api.byId('pro500p'),atv320=api.byId('schneider-atv320');
+ const speed=api.findings(n,atv320).find(f=>f.key==='safeMotion');
+ assert.equal(speed.kind,'rival');assert.equal(speed.a.state,'absent');
+ assert.match(speed.a.label,/BU 0630 en-0322/);assert.match(speed.a.text,/CU5-MLT/);
+ assert.match(speed.b.text,/SLS and SMS/);
+ const atv340=api.byId('schneider-atv340');
+ assert.equal(atv340.evidence.safeMotion.state,'option');
+ assert.match(atv340.evidence.safeMotion.text,/VW3A3802/);
+ assert.match(api.byId('danfoss-fc302').evidence.positioning.text,/48\.XX.*S067/);
+});
+
+test('All 180 pairings retain readable, independently sourced findings',()=>{
+ for(const n of api.nord())for(const c of api.rivals()){
+  const findings=api.findings(n,c),output=api.compare(n,c);
+  assert.ok(findings.length>=4);
+  for(const f of findings){
+   assert.ok(output.includes(`data-dc-finding="${f.key}"`));
+   assert.ok(output.includes(esc(f.a.url))&&output.includes(esc(f.b.url)));
+   if(f.a.state==='unknown'||f.b.state==='unknown')assert.equal(f.kind,'check');
+  }
+  assert.equal((output.match(/class="dc-fact"/g)||[]).length,findings.length*2);
+  assert.equal((output.match(/<details /g)||[]).length,(findings.some(f=>f.kind==='check')?1:0)+3);
+ }
+});
+
+test('Invalid stored sections recover to the comparison view',()=>{
+ context.settings={dcSection:'missing-section'};
+ assert.equal(api.config().section,'compare');
+});
+
+test('ON extended safety is model-scoped and is not inherited by ON PURE',()=>{
+ const on=api.byId('on'),pure=api.byId('nord-on-pure');
+ assert.equal(on.evidence.safeMotion.state,'variant');
+ assert.match(on.evidence.safeMotion.text,/SK 3x2P/);
+ assert.match(on.evidence.safeMotion.label,/BU 0840/);
+ assert.equal(pure.evidence.safeMotion.state,'absent');
+ assert.equal(pure.evidence.safety.state,'absent');
+});
+
+test('The folded architecture does not schedule hidden animation frames',()=>{
+ const a=html.indexOf('function dcArchitectureLayout('),b=html.indexOf('function dcMount()',a);
+ let scheduled=0;
+ const disclosure={open:false};
+ const element={setAttribute(){},closest:()=>disclosure};
+ const elements={'dc-architecture':element,'dc-arch-placement':{},'dc-architecture-description':{},'dc-flow-toggle':element,'dc-experience':{querySelectorAll:()=>[]}};
+ const ctx=vm.createContext({$:id=>elements[id],settings:{dcArchitecture:'cabinet'},dcConfig:()=>({nord:{placement:'cabinet'}}),dcArchitectureTarget:null,dcArchitectureRaf:0,dcArchitectureLast:100,dcArchitectureRun:false,requestAnimationFrame:()=>++scheduled});
+ vm.runInContext(html.slice(a,b)+';this.sync=dcArchitectureSync;this.frame=dcArchitectureFrame;',ctx);
+ ctx.sync();assert.equal(scheduled,0);
+ ctx.frame(200);assert.equal(ctx.dcArchitectureLast,0);assert.equal(scheduled,0);
+ disclosure.open=true;ctx.sync();assert.equal(scheduled,1);
 });
