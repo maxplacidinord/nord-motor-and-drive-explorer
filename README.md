@@ -185,6 +185,10 @@ separate conductors are never joined by the transition. New components fade in. 
 frames and slider scrubbing do not trigger configuration transitions.
 
 The motor-wiring and drive-comparison workspaces retain their dedicated animation engines.
+Motor-wiring reconnections keep each winding in its original part of the diagram. IEC and
+fan star/delta changes anchor the incoming winding ends. Dahlander corners move inward
+and midpoints outward without reversing the winding ring; supply stubs fade out before
+the reshape and return beside their new terminals afterwards.
 Reduced-motion preferences skip these transitions. Intermediate geometry is a visual aid;
 the final selected configuration is the teaching circuit.
 
